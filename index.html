@@ -21,6 +21,7 @@
         
         .btn-main { background-color: var(--purple); color: white; border: none; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
         .btn-main:hover { transform: scale(1.03); background-color: #361071; }
+        .btn-main:disabled { background-color: #aaa; cursor: not-allowed; transform: none; }
         
         /* 題組與編輯器樣式 */
         .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); position: relative; }
@@ -57,11 +58,11 @@
         .p-list-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
 
         /* 題目大螢幕畫面 */
-        .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
+        .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin: 0 auto 5px auto; text-align: center; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 260px 0 20px; text-align: left; width: 100%; max-width: 1100px; } 
-        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; padding-right: 250px; }
-        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; text-align: center; width: 100%; max-width: 1100px; } 
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; margin: 0 auto; }
+        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: center; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
         
@@ -91,10 +92,9 @@
         
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
         @media(max-width: 768px) { 
-            .options-grid { grid-template-columns: 1fr; padding-right: 10px; } 
+            .options-grid { grid-template-columns: 1fr; padding: 10px; } 
             .option-card { font-size: 18px; padding: 15px; } 
             .opt-row { grid-template-columns: 1fr; }
-            .question-text { padding: 0 20px; }
             .persistent-lobby-info { position: static; margin-bottom: 15px; width: 100%; max-width: 400px; } 
         }
     </style>
@@ -209,6 +209,17 @@
         let globalTimeLimit = 20; 
         let quizData = [];
         let localQuestionsCount = 0;
+
+        // 共用公用 STUN 伺服器設定，解決跨網路穿透失敗問題
+        const iceConfig = {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -411,6 +422,7 @@
         let roomPin = '';
         let connMap = new Map(); 
         let playerData = {};     
+        let playerScores = {}; 
         let roundAnswers = {};   
         let timerInterval = null;
         let timeLeft = 20;
@@ -420,6 +432,7 @@
         let myChart = null; 
         let myConn = null;
         let myNickname = '';
+        let connectTimeout = null;
 
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -446,7 +459,7 @@
             document.getElementById('room-pin-text').innerText = roomPin;
             document.getElementById('persist-pin-text').innerText = roomPin;
 
-            peer = new Peer('kahoot-room-' + roomPin);
+            peer = new Peer('kahoot-room-' + roomPin, iceConfig);
             peer.on('open', (id) => {
                 const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
                 
@@ -459,33 +472,43 @@
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => handleHostReceivedData(conn, data));
                 conn.on('close', () => removePlayerFromState(conn.peer));
+                conn.on('error', (err) => console.error("連線通道錯誤:", err));
+            });
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    alert('房間 ID 已被佔用，請重新開啟。');
+                    location.reload();
+                }
             });
         }
 
         function handleHostReceivedData(conn, data) {
             if (data.type === 'JOIN') {
-                connMap.set(conn.peer, conn);
-                
-                let existingKey = null;
-                for (let key in playerData) {
-                    if (playerData[key].name === data.name) {
-                        existingKey = key;
-                        break;
-                    }
+                if (playerScores[data.name] === undefined) {
+                    playerScores[data.name] = 0;
                 }
 
-                if (existingKey) {
-                    playerData[conn.peer] = playerData[existingKey];
-                    if (existingKey !== conn.peer) {
-                        delete playerData[existingKey];
-                        if(roundAnswers[existingKey]) {
-                            roundAnswers[conn.peer] = roundAnswers[existingKey];
-                            delete roundAnswers[existingKey];
-                        }
+                // 避免手機端異常瞬斷重連時產生的衝突，先剔除舊 ID
+                let existingPeerId = Object.keys(playerData).find(id => playerData[id].name === data.name);
+                if (existingPeerId && existingPeerId !== conn.peer) {
+                    let oldConn = connMap.get(existingPeerId);
+                    if(oldConn) {
+                        oldConn.send({ type: 'KICKED' });
+                        setTimeout(() => oldConn.close(), 100);
                     }
-                } else {
-                    playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
+                    connMap.delete(existingPeerId);
+                    delete playerData[existingPeerId];
+                    delete roundAnswers[existingPeerId];
                 }
+
+                connMap.set(conn.peer, conn);
+                
+                playerData[conn.peer] = { 
+                    name: data.name, 
+                    score: playerScores[data.name], 
+                    lastAnswerCorrect: false, 
+                    lastScoreGained: 0 
+                };
 
                 updatePlayerListsUI();
                 conn.send({ type: 'JOIN_ACK', success: true });
@@ -515,7 +538,7 @@
         function kickPlayer(peerId) {
             const conn = connMap.get(peerId);
             if (conn) {
-                conn.send({ type: 'KICKED' }); // 傳送踢除訊息通知玩家端
+                conn.send({ type: 'KICKED' }); 
                 setTimeout(() => {
                     conn.close();
                     removePlayerFromState(peerId);
@@ -542,12 +565,8 @@
         /* 統一更新：等待大廳 與 全局常駐看板 的玩家清單與踢除功能 */
         function updatePlayerListsUI() {
             let count = 0;
-            
-            // 1. 更新等待大廳畫面 (Lobby)
             const lobbyDom = document.getElementById('lobby-players');
             if (lobbyDom) lobbyDom.innerHTML = '';
-            
-            // 2. 更新右側常駐面板清單 (Persistent View)
             const persistDom = document.getElementById('persist-players-dom');
             if (persistDom) persistDom.innerHTML = '';
 
@@ -555,7 +574,6 @@
                 count++;
                 let pName = playerData[id].name;
 
-                // 渲染大廳 Badge
                 if (lobbyDom) {
                     let badge = document.createElement('div');
                     badge.className = 'player-badge';
@@ -563,7 +581,6 @@
                     lobbyDom.appendChild(badge);
                 }
 
-                // 渲染常駐管理面板清單項目
                 if (persistDom) {
                     let pRow = document.createElement('div');
                     pRow.className = 'p-list-item';
@@ -658,6 +675,8 @@
                     playerData[id].lastScoreGained = 0;
                     playerData[id].lastAnswerCorrect = false;
                 }
+
+                playerScores[pName] = playerData[id].score;
 
                 let pConn = connMap.get(id);
                 if (pConn) {
@@ -800,17 +819,62 @@
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
             if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
+            
+            // 鎖定連線按鈕避免玩家連點造成重複連線衝突
+            const connectBtn = document.querySelector("#screen-pad-login .btn-main");
+            const originalText = connectBtn.innerText;
+            connectBtn.disabled = true;
+            connectBtn.innerText = "正在連線中...";
+
             role = 'player';
-            peer = new Peer();
+            if (peer) { try { peer.destroy(); } catch(e){} }
+
+            peer = new Peer(iceConfig);
+
+            // 設置 8 秒逾時防卡死機制
+            connectTimeout = setTimeout(() => {
+                alert('連線逾時！行動網路與電腦主機可能存在跨網限制。請嘗試讓手機連上與電腦相同的 Wi-Fi 網路再加入！');
+                connectBtn.disabled = false;
+                connectBtn.innerText = originalText;
+                if(peer) peer.destroy();
+            }, 8000);
+
             peer.on('open', (id) => {
-                myConn = peer.connect('kahoot-room-' + pin);
-                myConn.on('open', () => myConn.send({ type: 'JOIN', name: myNickname }));
+                myConn = peer.connect('kahoot-room-' + pin, { reliable: true });
+                
+                myConn.on('open', () => {
+                    clearTimeout(connectTimeout);
+                    connectBtn.disabled = false;
+                    connectBtn.innerText = originalText;
+                    myConn.send({ type: 'JOIN', name: myNickname });
+                });
+                
                 myConn.on('data', (data) => handlePlayerReceivedData(data));
+                
                 myConn.on('close', () => { 
                     console.log('與主台連線中斷...');
+                    alert('與大螢幕主台連線已斷開，可能是手機進入休眠或網路不穩，請重新加入。');
+                    location.reload();
+                });
+
+                myConn.on('error', (err) => {
+                    clearTimeout(connectTimeout);
+                    alert('連線通道發生錯誤，請重新加入。');
+                    connectBtn.disabled = false;
+                    connectBtn.innerText = originalText;
                 });
             });
-            peer.on('error', (err) => alert('找不到該房間，請確認房間 ID 是否正確。'));
+            
+            peer.on('error', (err) => {
+                clearTimeout(connectTimeout);
+                connectBtn.disabled = false;
+                connectBtn.innerText = originalText;
+                if (err.type === 'peer-not-found') {
+                    alert('找不到該房間，請確認房間 ID 是否填寫正確。');
+                } else {
+                    alert('伺服器連線失敗 (' + err.type + ')，請確認網路連線或稍後再試。');
+                }
+            });
         }
 
         function handlePlayerReceivedData(data) {
@@ -820,10 +884,8 @@
             }
             if (data.type === 'START_QUESTION') {
                 switchScreen('screen-pad-game');
-                
                 document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
                 document.getElementById('pad-header-title').innerText = data.qTitle;
-
                 document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
             }
             if (data.type === 'ANSWER_ACK') {
@@ -845,7 +907,7 @@
             }
             if (data.type === 'KICKED') {
                 alert('您已被房長移出房間。');
-                location.reload(); // 被踢除後自動刷新回首頁
+                location.reload(); 
             }
         }
 
