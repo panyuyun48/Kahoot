@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>互動搶答 Kahoot 模擬器 (含踢人功能)</title>
+    <title>互動搶答 Kahoot 模擬器 (含答題統計長條圖)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --red: #e21b3c; --blue: #1368ce; --green: #26890c; --yellow: #d89e00;
+            --red: #e21b3c; --blue: #1368ce; --yellow: #d89e00; --green: #26890c;
             --purple: #46178f; --dark: #1a1a1a; --white: #ffffff;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -27,7 +28,7 @@
         
         /* 玩家列表與踢人效果 */
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
-        .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; position: relative; transition: all 0.2s; }
+        .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
         .player-badge:hover { background-color: var(--red); color: white; border-color: var(--red); transform: translateY(-2px); }
         .player-badge:hover::after { content: ' ✕ 踢除'; font-size: 14px; margin-left: 5px; color: #fff; }
         
@@ -36,12 +37,19 @@
         .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; position: relative; }
+        .option-card.fade-out { opacity: 0.25; transform: scale(0.95); } /* 答題結束後，沒被選的正確答案會變淡 */
+        .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
+        
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
         .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
+        
         .option-shape { width: 30px; height: 30px; display: inline-block; border: 3px solid white; flex-shrink: 0; }
         .shape-0 { border-radius: 50%; } .shape-1 { transform: rotate(45deg); }
         .shape-2 { border-radius: 3px; } .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
         
+        /* 統計圖表容器 */
+        .chart-container { width: 100%; max-width: 500px; height: 250px; margin: 15px auto; }
+
         /* 排行榜與統計 */
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -81,13 +89,20 @@
     <div id="screen-host-quiz" class="screen">
         <div class="timer-circle" id="host-timer">20</div>
         <div class="question-text" id="host-question">題目載入中...</div>
+        
+        <div class="chart-container" id="chart-panel" style="display: none;">
+            <canvas id="resultChart"></canvas>
+        </div>
+
         <div class="options-grid" id="host-options"></div>
-        <div style="margin-top:20px; font-size:18px; color:#666;" id="answer-counter">已答題人數: 0</div>
+        
+        <div style="margin-top:20px; font-size:18px; font-weight: bold;" id="host-footer-btn-zone">
+            <span id="answer-counter" style="color:#666;">已答題人數: 0</span>
+        </div>
     </div>
 
     <div id="screen-host-rank" class="screen">
-        <h2 id="rank-title">本題結束</h2>
-        <div style="font-size:22px; color:var(--green); font-weight:bold; margin:10px;" id="correct-answer-reveal">正確答案：</div>
+        <h2 id="rank-title">目前積分榜</h2>
         <div class="leaderboard-list" id="leaderboard-dom"></div>
         <button class="btn-main" id="btn-next" onclick="nextQuestion()">下一題</button>
     </div>
@@ -141,6 +156,7 @@
         let timeLeft = 20;
         let questionStartTime = 0;
         let isAcceptingAnswers = false;
+        let myChart = null; // 統計圖表實例
 
         // Player 專用變數
         let myConn = null;
@@ -212,14 +228,12 @@
             }
         }
 
-        // 移除玩家核心邏輯
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
             delete playerData[peerId];
             delete roundAnswers[peerId];
             updateLobbyUI();
             
-            // 處理如果在遊戲中有人退出，檢查是否所有人都已答題
             if (isAcceptingAnswers) {
                 let answeredCount = Object.keys(roundAnswers).length;
                 document.getElementById('answer-counter').innerText = `已答題人數: ${answeredCount}`;
@@ -229,11 +243,9 @@
             }
         }
 
-        // 主辦方手動踢人功能
         function kickPlayer(peerId) {
             let conn = connMap.get(peerId);
             if (conn) {
-                // 發信通知對方被踢除
                 conn.send({ type: 'KICKED' });
                 setTimeout(() => {
                     conn.close();
@@ -251,7 +263,6 @@
                 let badge = document.createElement('div');
                 badge.className = 'player-badge';
                 badge.innerText = playerData[id].name;
-                // 綁定點擊事件，點了就踢人
                 badge.onclick = () => kickPlayer(id);
                 lobby.appendChild(badge);
             }
@@ -269,7 +280,11 @@
             roundAnswers = {};
             timeLeft = 20;
             
-            document.getElementById('answer-counter').innerText = `已答題人數: 0`;
+            // 重置大螢幕統計介面
+            document.getElementById('chart-panel').style.display = 'none';
+            document.getElementById('host-timer').style.display = 'flex';
+            document.getElementById('host-footer-btn-zone').innerHTML = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
+            
             switchScreen('screen-host-quiz');
             
             let qItem = quizData[currentIdx];
@@ -279,9 +294,9 @@
             const shapes = ['shape-0', 'shape-1', 'shape-2', 'shape-3'];
             qItem.opts.forEach((opt, index) => {
                 optionsHtml += `
-                    <div class="option-card opt-${index}">
+                    <div class="option-card opt-${index}" id="opt-card-${index}">
                         <span class="option-shape ${shapes[index]}"></span>
-                        ${opt}
+                        <span class="opt-text-val">${opt}</span>
                     </div>`;
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
@@ -305,15 +320,25 @@
             isAcceptingAnswers = false;
             let qItem = quizData[currentIdx];
 
+            // 1. 初始化統計計數器 (統計四個選項分別多少人選)
+            let stats = [0, 0, 0, 0];
+
+            // 2. 計算分數與統計作答分布
             for (let id in playerData) {
                 let pAnswer = roundAnswers[id];
-                if (pAnswer && pAnswer.optIndex === qItem.ans) {
-                    let t = Math.min(pAnswer.timeTaken, 20);
-                    let scoreGained = Math.round((1 - ((t / 20) * 0.5)) * 1000);
+                if (pAnswer) {
+                    stats[pAnswer.optIndex]++; // 計入統計圖
                     
-                    playerData[id].score += scoreGained;
-                    playerData[id].lastScoreGained = scoreGained;
-                    playerData[id].lastAnswerCorrect = true;
+                    if (pAnswer.optIndex === qItem.ans) {
+                        let t = Math.min(pAnswer.timeTaken, 20);
+                        let scoreGained = Math.round((1 - ((t / 20) * 0.5)) * 1000);
+                        playerData[id].score += scoreGained;
+                        playerData[id].lastScoreGained = scoreGained;
+                        playerData[id].lastAnswerCorrect = true;
+                    } else {
+                        playerData[id].lastScoreGained = 0;
+                        playerData[id].lastAnswerCorrect = false;
+                    }
                 } else {
                     playerData[id].lastScoreGained = 0;
                     playerData[id].lastAnswerCorrect = false;
@@ -329,20 +354,66 @@
                     });
                 }
             }
-            showLeaderboard();
+
+            // 3. 大螢幕效果：隱藏倒數計時，顯現長條圖統計
+            document.getElementById('host-timer').style.display = 'none';
+            document.getElementById('chart-panel').style.display = 'block';
+            renderChart(stats);
+
+            // 4. 大螢幕效果：公布正解（非正解的選項變淡，正解框起來）
+            qItem.opts.forEach((_, index) => {
+                let card = document.getElementById(`opt-card-${index}`);
+                if (index === qItem.ans) {
+                    card.classList.add('correct-highlight');
+                    card.innerHTML += ` <span style="margin-left:auto; font-size:28px;">✓</span>`;
+                } else {
+                    card.classList.add('fade-out');
+                }
+            });
+
+            // 5. 將下方計數文字替換成「查看排行榜」按鈕
+            document.getElementById('host-footer-btn-zone').innerHTML = `
+                <button class="btn-main" style="margin-top:0; padding:10px 30px; font-size:18px;" onclick="showLeaderboard()">看目前排名 ❯</button>
+            `;
+        }
+
+        // 使用 Chart.js 畫出 Kahoot 風格的即時統計圖
+        function renderChart(dataValues) {
+            const ctx = document.getElementById('resultChart').getContext('2d');
+            
+            if (myChart) { myChart.destroy(); } // 銷毀舊圖表重畫
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['🔴', '🔵', '🟡', '🟢'], // 用幾何圖形代替標籤
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#333', font: { weight: 'bold' } } },
+                        x: { ticks: { font: { size: 24 } } }
+                    }
+                }
+            });
         }
 
         function showLeaderboard() {
             switchScreen('screen-host-rank');
-            let qItem = quizData[currentIdx];
-            document.getElementById('correct-answer-reveal').innerText = `正確答案：${qItem.opts[qItem.ans]}`;
             
             if(currentIdx === quizData.length - 1) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 document.getElementById('btn-next').innerText = "再玩一次";
             } else {
                 document.getElementById('rank-title').innerText = "目前積分榜";
-                document.getElementById('btn-next').innerText = "下一題";
+                document.getElementById('btn-next').innerText = "下一題 ❯";
             }
 
             let sorted = Object.keys(playerData).map(id => ({
@@ -352,9 +423,10 @@
 
             let rankHtml = '';
             sorted.forEach((p, idx) => {
+                let crown = idx === 0 ? '👑 ' : '';
                 rankHtml += `
                     <div class="leaderboard-item">
-                        <span>${idx+1}. ${p.name}</span>
+                        <span>${crown}${idx+1}. ${p.name}</span>
                         <span>${p.score} pts</span>
                     </div>`;
             });
@@ -423,7 +495,7 @@
             }
             if (data.type === 'ANSWER_ACK') {
                 switchScreen('screen-pad-wait');
-                document.getElementById('pad-wait-msg').innerText = "傳送成功！等待其他人作答...";
+                document.getElementById('pad-wait-msg').innerText = "傳送成功！等待時間結束...";
             }
             if (data.type === 'QUESTION_RESULT') {
                 switchScreen('screen-pad-result');
