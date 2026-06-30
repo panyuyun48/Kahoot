@@ -15,7 +15,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f2f2f2; color: var(--dark); overflow-x: hidden; }
         
-        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; position: relative; }
         .screen.active { display: flex; }
         
         .btn-main { background-color: var(--purple); color: white; border: none; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
@@ -37,10 +37,23 @@
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
         .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
         
+        /* 核心新增：右上角常駐連線資訊面板 */
+        .persistent-lobby-info {
+            position: absolute; top: 15px; right: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border: 2px solid var(--purple);
+            display: none; flex-direction: column; align-items: center; z-index: 999;
+        }
+        .persistent-lobby-info.visible { display: flex; }
+        .persistent-pin { font-size: 18px; font-weight: bold; color: var(--purple); margin-bottom: 5px; }
+        .persistent-qr { background: white; padding: 4px; border-radius: 4px; }
+
         /* 題目大螢幕畫面 */
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 120px 0 20px; } /* 右邊留空避免撞到常駐面板 */
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
@@ -70,13 +83,24 @@
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
-        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 18px; padding: 15px; } .opt-row { grid-template-columns: 1fr; } }
+        @media(max-width: 768px) { 
+            .options-grid { grid-template-columns: 1fr; } 
+            .option-card { font-size: 18px; padding: 15px; } 
+            .opt-row { grid-template-columns: 1fr; }
+            .question-text { padding: 0 20px; }
+            .persistent-lobby-info { position: static; margin-bottom: 15px; } /* 行動端若看主台改為頂部排列 */
+        }
     </style>
 </head>
 <body>
 
+    <div id="global-persistent-panel" class="persistent-lobby-info">
+        <div class="persistent-pin">房間 ID: <span id="persist-pin-text">----</span></div>
+        <div id="persist-qrcode" class="persistent-qr"></div>
+    </div>
+
     <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
-        <h1>Kahoot!! Fake</h1>
+        <h1>Kahoot!! FAKE</h1>
         <p style="margin: 10px 0 20px 0; opacity: 0.8;">您可以新增題組、或是直接匯入現有的題組 JSON 檔案！</p>
         
         <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
@@ -152,13 +176,19 @@
         <p style="font-size:20px; margin-top:15px;" id="pad-result-score">+0 分</p>
     </div>
 
+    <div id="screen-pad-final" class="screen" style="background: linear-gradient(135deg, #110326 0%, #46178f 100%); color:white;">
+        <h1 style="font-size: 36px; margin-bottom: 10px;">🏁 遊戲結束！</h1>
+        <div id="pad-final-rank" style="font-size: 28px; font-weight: bold; margin: 20px 0; color: #ffeb3b;">第 -- 名</div>
+        <div id="pad-final-score" style="font-size: 24px; background: rgba(255,255,255,0.1); padding: 15px 40px; border-radius: 50px; font-weight: bold;">總積分: 0 pts</div>
+        <button class="btn-main" style="background:#666; margin-top:40px; font-size:16px;" onclick="location.reload()">返回首頁</button>
+    </div>
+
     <script>
         let globalTimeLimit = 20; 
         let quizData = [];
         let localQuestionsCount = 0;
 
         window.onload = function() {
-            // 解析 URL 自動填入房間 ID
             const urlParams = new URLSearchParams(window.location.search);
             const rId = urlParams.get('room');
             if (rId) {
@@ -167,12 +197,10 @@
             }
         };
 
-        // 建立題組 UI
         function createNewQuizSetUI() {
             document.getElementById('quiz-workspace').innerHTML = `
                 <div class="quiz-set-container" id="current-quiz-set">
                     <h3 style="color:var(--purple); border-bottom:2px solid #eee; padding-bottom:10px;">📋 專屬自訂題組</h3>
-                    
                     <label>⏱️ 整個題組答題時間統一設定：</label>
                     <select id="set-global-time">
                         <option value="10">10 秒</option>
@@ -181,22 +209,18 @@
                         <option value="60">60 秒</option>
                         <option value="0">🛑 手動結束（不限時）</option>
                     </select>
-
                     <div id="sub-questions-list"></div>
-                    
                     <button class="btn-main" style="background:#0085ff; font-size:16px; padding:8px 20px; width:100%;" onclick="addQuestionInnerBlock()">＋ 在此題組內新增題目</button>
                 </div>
             `;
             localQuestionsCount = 0;
             addQuestionInnerBlock(); 
-            
             document.getElementById('btn-add-set').style.display = 'none';
             document.getElementById('btn-import-set').style.display = 'none';
             document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
         }
 
-        // 新增單一題目區塊
         function addQuestionInnerBlock(prefill = null) {
             const listContainer = document.getElementById('sub-questions-list');
             const bIdx = localQuestionsCount;
@@ -228,18 +252,10 @@
             localQuestionsCount++;
         }
 
-        // 功能：匯出目前設計的題組為 JSON 檔案
         function exportQuizSetToFile() {
             compileAllInputs();
-            if(quizData.length === 0) {
-                alert('請確認題目與四個選項皆有完整填寫！');
-                return;
-            }
-            const dataToExport = {
-                timeLimit: globalTimeLimit,
-                questions: quizData
-            };
-            
+            if(quizData.length === 0) { alert('請確認題目與四個選項皆有完整填寫！'); return; }
+            const dataToExport = { timeLimit: globalTimeLimit, questions: quizData };
             const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", jsonString);
@@ -249,41 +265,32 @@
             downloadAnchor.remove();
         }
 
-        // 功能：讀取外部匯入的 JSON 題組
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const parsed = JSON.parse(e.target.result);
-                    if (!parsed.questions || !Array.isArray(parsed.questions)) {
-                        throw new Error('檔案格式錯誤，找不到題目列表。');
-                    }
-                    // 還原到畫面
+                    if (!parsed.questions || !Array.isArray(parsed.questions)) throw new Error('檔案格式錯誤');
                     createNewQuizSetUI();
                     document.getElementById('set-global-time').value = parsed.timeLimit || 20;
                     document.getElementById('sub-questions-list').innerHTML = '';
                     localQuestionsCount = 0;
-                    parsed.questions.forEach(q => {
-                        addQuestionInnerBlock(q);
-                    });
-                    alert('📂 題組檔案已成功匯入！您可以繼續編輯或直接開啟大螢幕開賽。');
+                    parsed.questions.forEach(q => addQuestionInnerBlock(q));
+                    alert('📂 題組檔案已成功匯入！');
                 } catch (error) {
                     alert('匯入失敗：' + error.message);
                 }
             };
             reader.readAsText(file);
-            event.target.value = ''; // 清空選擇狀態
+            event.target.value = '';
         }
 
-        // 打包輸入欄位
         function compileAllInputs() {
             quizData = [];
             const setDom = document.getElementById('current-quiz-set');
             if(!setDom) return;
-
             globalTimeLimit = parseInt(document.getElementById('set-global-time').value);
             const blocks = setDom.querySelectorAll('.q-editor-block');
             blocks.forEach(b => {
@@ -293,14 +300,8 @@
                 const o2 = b.querySelector('.q-opt-2').value.trim();
                 const o3 = b.querySelector('.q-opt-3').value.trim();
                 const ans = parseInt(b.querySelector('.q-ans').value);
-                
                 if(title && o0 && o1 && o2 && o3) {
-                    quizData.push({
-                        q: title,
-                        opts: [o0, o1, o2, o3],
-                        ans: ans,
-                        timeLimit: globalTimeLimit
-                    });
+                    quizData.push({ q: title, opts: [o0, o1, o2, o3], ans: ans, timeLimit: globalTimeLimit });
                 }
             });
         }
@@ -309,7 +310,6 @@
         let role = ''; 
         let peer = null;
         let roomPin = '';
-        
         let connMap = new Map(); 
         let playerData = {};     
         let roundAnswers = {};   
@@ -319,13 +319,20 @@
         let questionStartTime = 0;
         let isAcceptingAnswers = false;
         let myChart = null; 
-
         let myConn = null;
         let myNickname = '';
 
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
+            
+            // 核心控制邏輯：除了首頁與Lobby大廳以外，其餘大螢幕畫面一律亮起右上角常駐面板
+            const persistentPanel = document.getElementById('global-persistent-panel');
+            if (role === 'host' && screenId !== 'screen-host-lobby') {
+                persistentPanel.classList.add('visible');
+            } else {
+                persistentPanel.classList.remove('visible');
+            }
         }
 
         /* =====================================================================
@@ -333,71 +340,68 @@
            ===================================================================== */
         function initHost() {
             compileAllInputs();
-            if(quizData.length === 0) {
-                alert('請確認至少填寫了一組完整的題目與四個選項！');
-                return;
-            }
-
+            if(quizData.length === 0) { alert('請確認至少填寫了一組完整題目！'); return; }
             role = 'host';
             switchScreen('screen-host-lobby');
-            
             roomPin = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            // 同步填入大廳與常駐看板的 PIN 碼文字
             document.getElementById('room-pin-text').innerText = roomPin;
+            document.getElementById('persist-pin-text').innerText = roomPin;
 
             peer = new Peer('kahoot-room-' + roomPin);
-
             peer.on('open', (id) => {
                 const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
+                
+                // 1. 渲染大廳主要的大 QR Code
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById('qrcode'), { text: joinUrl, width: 160, height: 160 });
+                
+                // 2. 同步渲染右上角常駐面板的小 QR Code (供斷線重連使用)
+                document.getElementById('persist-qrcode').innerHTML = "";
+                new QRCode(document.getElementById('persist-qrcode'), { text: joinUrl, width: 85, height: 85 });
             });
-
             peer.on('connection', (conn) => {
-                conn.on('data', (data) => {
-                    handleHostReceivedData(conn, data);
-                });
-                conn.on('close', () => {
-                    removePlayerFromState(conn.peer);
-                });
+                conn.on('data', (data) => handleHostReceivedData(conn, data));
+                conn.on('close', () => removePlayerFromState(conn.peer));
             });
         }
 
         function handleHostReceivedData(conn, data) {
             if (data.type === 'JOIN') {
+                // 支援中斷重連：如果玩家本來就在名單內，直接覆蓋新連線
                 connMap.set(conn.peer, conn);
-                playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
+                if (!playerData[conn.peer]) {
+                    playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
+                }
                 updateLobbyUI();
                 conn.send({ type: 'JOIN_ACK', success: true });
+                
+                // 如果該玩家是在「遊戲中」斷線重連進來，立即同步目前畫面狀態給他
+                if (isAcceptingAnswers) {
+                    conn.send({ type: 'START_QUESTION' });
+                }
             }
             if (data.type === 'SUBMIT_ANSWER') {
                 if (!isAcceptingAnswers || roundAnswers[conn.peer]) return;
-                
                 let timeTaken = (Date.now() - questionStartTime) / 1000;
                 roundAnswers[conn.peer] = { optIndex: data.optIdx, timeTaken: timeTaken };
-                
                 let answeredCount = Object.keys(roundAnswers).length;
                 document.getElementById('answer-counter').innerText = `已答題人數: ${answeredCount}`;
-                
                 conn.send({ type: 'ANSWER_ACK' });
-
-                if (answeredCount >= connMap.size) {
-                    endQuestion();
-                }
+                if (answeredCount >= connMap.size) endQuestion();
             }
         }
 
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
-            delete playerData[peerId];
-            delete roundAnswers[peerId];
+            // 註解掉刪除玩家資料，保留分數與名字以便斷線的人可以原地重連回來繼續玩
+            // delete playerData[peerId]; 
             updateLobbyUI();
-            
             if (isAcceptingAnswers) {
                 let answeredCount = Object.keys(roundAnswers).length;
                 document.getElementById('answer-counter').innerText = `已答題人數: ${answeredCount}`;
-                if (connMap.size > 0 && answeredCount >= connMap.size) {
-                    endQuestion();
-                }
+                if (connMap.size > 0 && answeredCount >= connMap.size) endQuestion();
             }
         }
 
@@ -409,30 +413,30 @@
                 count++;
                 let badge = document.createElement('div');
                 badge.className = 'player-badge';
-                badge.innerText = playerData[id].name;
+                // 如果目前是斷線狀態，標記灰色提示
+                if (!connMap.has(id)) {
+                    badge.style.opacity = '0.5';
+                    badge.innerText = pData.name + " (斷線)";
+                } else {
+                    badge.innerText = playerData[id].name;
+                }
                 lobby.appendChild(badge);
             }
             document.getElementById('player-count').innerText = count;
             document.getElementById('btn-start-game').style.display = count > 0 ? 'inline-block' : 'none';
         }
 
-        function startQuiz() {
-            currentIdx = 0;
-            showQuestion();
-        }
+        function startQuiz() { currentIdx = 0; showQuestion(); }
 
         function showQuestion() {
             isAcceptingAnswers = true;
             roundAnswers = {};
-            
             let qItem = quizData[currentIdx];
             timeLeft = qItem.timeLimit;
             totalTimeAllocated = timeLeft === 0 ? 30 : timeLeft;
 
             document.getElementById('chart-panel').style.display = 'none';
             document.getElementById('host-timer').style.display = 'flex';
-            
-            // 核心修改：更新進度條文字 (目前題號 / 總題數)
             document.getElementById('host-quiz-progress').innerText = `題目 ${currentIdx + 1} / ${quizData.length}`;
             
             let footerHtml = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
@@ -466,9 +470,7 @@
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     document.getElementById('host-timer').innerText = timeLeft;
-                    if (timeLeft <= 0) {
-                        endQuestion();
-                    }
+                    if (timeLeft <= 0) endQuestion();
                 }, 1000);
             }
         }
@@ -477,7 +479,6 @@
             clearInterval(timerInterval);
             isAcceptingAnswers = false;
             let qItem = quizData[currentIdx];
-
             let stats = [0, 0, 0, 0];
             let voters = [[], [], [], []];
 
@@ -487,7 +488,6 @@
                 if (pAnswer) {
                     stats[pAnswer.optIndex]++; 
                     voters[pAnswer.optIndex].push(pName); 
-                    
                     if (pAnswer.optIndex === qItem.ans) {
                         let t = Math.min(pAnswer.timeTaken, totalTimeAllocated);
                         let scoreGained = Math.round((1 - ((t / totalTimeAllocated) * 0.5)) * 1000);
@@ -516,7 +516,6 @@
 
             document.getElementById('host-timer').style.display = 'none';
             document.getElementById('chart-panel').style.display = 'block';
-            
             renderShapeChart(stats, voters);
 
             qItem.opts.forEach((_, index) => {
@@ -534,11 +533,9 @@
             `;
         }
 
-        // 用 2D Canvas 自訂繪製純幾何圖形 X 軸 (實心填滿)
         function renderShapeChart(dataValues, votersList) {
             const ctx = document.getElementById('resultChart').getContext('2d');
             if (myChart) { myChart.destroy(); } 
-
             const shapeLabelsPlugin = {
                 id: 'shapeLabels',
                 afterDraw: (chart) => {
@@ -548,19 +545,14 @@
                         const xPos = x.getPixelForTick(index);
                         const yPos = y.bottom + 20; 
                         const size = 18;            
-
                         if (index === 0) {
-                            ctx.fillStyle = '#e21b3c';
-                            ctx.beginPath(); ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI); ctx.fill();
+                            ctx.fillStyle = '#e21b3c'; ctx.beginPath(); ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI); ctx.fill();
                         } else if (index === 1) {
-                            ctx.fillStyle = '#1368ce';
-                            ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos); ctx.lineTo(xPos, yPos + size/2); ctx.lineTo(xPos - size/2, yPos); ctx.closePath(); ctx.fill();
+                            ctx.fillStyle = '#1368ce'; ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos); ctx.lineTo(xPos, yPos + size/2); ctx.lineTo(xPos - size/2, yPos); ctx.closePath(); ctx.fill();
                         } else if (index === 2) {
-                            ctx.fillStyle = '#d89e00';
-                            ctx.beginPath(); ctx.rect(xPos - size/2, yPos - size/2, size, size); ctx.fill();
+                            ctx.fillStyle = '#d89e00'; ctx.beginPath(); ctx.rect(xPos - size/2, yPos - size/2, size, size); ctx.fill();
                         } else if (index === 3) {
-                            ctx.fillStyle = '#26890c';
-                            ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos + size/2); ctx.lineTo(xPos - size/2, yPos + size/2); ctx.closePath(); ctx.fill();
+                            ctx.fillStyle = '#26890c'; ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos + size/2); ctx.lineTo(xPos - size/2, yPos + size/2); ctx.closePath(); ctx.fill();
                         }
                     });
                     ctx.restore();
@@ -571,25 +563,17 @@
                 type: 'bar',
                 data: {
                     labels: ['', '', '', ''], 
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
-                        borderRadius: 5
-                    }]
+                    datasets: [{ data: dataValues, backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'], borderRadius: 5 }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     layout: { padding: { bottom: 25 } }, 
                     plugins: { 
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                title: function(context) {
-                                    const names = ['圓形選項', '菱形選項', '正方形選項', '三角形選項'];
-                                    return names[context[0].dataIndex];
-                                },
-                                label: function(context) {
+                                title: (context) => ['圓形選項', '菱形選項', '正方形選項', '三角形選項'][context[0].dataIndex],
+                                label: (context) => {
                                     let names = votersList[context.dataIndex];
                                     return names.length === 0 ? " 無人選擇" : " 選擇者: " + names.join(', ');
                                 }
@@ -607,18 +591,28 @@
 
         function showLeaderboard() {
             switchScreen('screen-host-rank');
-            if(currentIdx === quizData.length - 1) {
+            let sorted = Object.keys(playerData).map(id => ({
+                id: id,
+                name: playerData[id].name,
+                score: playerData[id].score
+            })).sort((a,b) => b.score - a.score);
+
+            const isFinalRound = (currentIdx === quizData.length - 1);
+
+            if(isFinalRound) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 document.getElementById('btn-next').innerText = "回首頁 ↺";
+                
+                sorted.forEach((p, idx) => {
+                    let pConn = connMap.get(p.id);
+                    if (pConn) {
+                        pConn.send({ type: 'FINAL_結算', finalRank: idx + 1, finalScore: p.score });
+                    }
+                });
             } else {
                 document.getElementById('rank-title').innerText = `目前積分榜 (完賽進度: ${currentIdx + 1} / ${quizData.length})`;
                 document.getElementById('btn-next').innerText = "下一題 ❯";
             }
-
-            let sorted = Object.keys(playerData).map(id => ({
-                name: playerData[id].name,
-                score: playerData[id].score
-            })).sort((a,b) => b.score - a.score);
 
             let rankHtml = '';
             sorted.forEach((p, idx) => {
@@ -641,9 +635,7 @@
             }
         }
 
-        function broadcast(msg) {
-            connMap.forEach(conn => conn.send(msg));
-        }
+        function broadcast(msg) { connMap.forEach(conn => conn.send(msg)); }
 
         /* =====================================================================
            玩家手機端邏輯 (Player)
@@ -651,31 +643,20 @@
         function connectToHost() {
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
-
-            if(!pin || !myNickname) {
-                alert('請填入房間 ID 與暱稱！');
-                return;
-            }
-
+            if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
             role = 'player';
             peer = new Peer();
-            
             peer.on('open', (id) => {
                 myConn = peer.connect('kahoot-room-' + pin);
-                myConn.on('open', () => {
-                    myConn.send({ type: 'JOIN', name: myNickname });
-                });
-                myConn.on('data', (data) => {
-                    handlePlayerReceivedData(data);
-                });
-                myConn.on('close', () => {
-                    alert('與主控端連線中斷。');
-                    location.reload();
+                myConn.on('open', () => myConn.send({ type: 'JOIN', name: myNickname }));
+                myConn.on('data', (data) => handlePlayerReceivedData(data));
+                myConn.on('close', () => { 
+                    alert('與主控端連線中斷，正在自動嘗試重新連線...'); 
+                    // 自動重連
+                    setTimeout(connectToHost, 1500);
                 });
             });
-            peer.on('error', (err) => {
-                alert('找不到該房間，請確認房間 ID 是否正確。');
-            });
+            peer.on('error', (err) => alert('找不到該房間，請確認房間 ID 是否正確。'));
         }
 
         function handlePlayerReceivedData(data) {
@@ -694,23 +675,24 @@
             if (data.type === 'QUESTION_RESULT') {
                 switchScreen('screen-pad-result');
                 const resBg = data.isCorrect ? 'var(--green)' : 'var(--red)';
-                const resTitle = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
-                
                 document.getElementById('screen-pad-result').style.backgroundColor = resBg;
-                document.getElementById('pad-result-title').innerText = resTitle;
+                document.getElementById('pad-result-title').innerText = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
                 document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
+            }
+            if (data.type === 'FINAL_結算') {
+                switchScreen('screen-pad-final');
+                let rankStr = data.finalRank <= 3 ? `🏆 恭喜獲得第 ${data.finalRank} 名！` : `🎉 順利完賽！獲得第 ${data.finalRank} 名`;
+                document.getElementById('pad-final-rank').innerText = rankStr;
+                document.getElementById('pad-final-score').innerText = `總積分: ${data.finalScore} pts`;
             }
         }
 
         document.querySelector('.pad-grid').addEventListener('click', (e) => {
             let btn = e.target.closest('.pad-btn');
             if(!btn || btn.disabled) return;
-            
             document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
             let optIdx = Array.from(document.querySelectorAll('.pad-btn')).indexOf(btn);
-            if (myConn) {
-                myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
-            }
+            if (myConn) myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
         });
     </script>
 </body>
