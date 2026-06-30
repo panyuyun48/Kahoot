@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自訂題庫互動搶答 Kahoot 模擬器</title>
+    <title>極致 Kahoot 模擬器 (自訂秒數與純圖形統計)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -23,10 +23,12 @@
         
         /* 題庫編輯區樣式 */
         .creator-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 650px; text-align: left; margin-bottom: 20px; max-height: 60vh; overflow-y: auto; }
-        .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin-bottom: 25px; }
+        .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin-bottom: 25px; position: relative; }
         .q-editor-block h4 { color: var(--purple); margin-bottom: 10px; }
         .creator-container input, .creator-container select { width: 100%; padding: 10px; margin: 6px 0 12px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
         .opt-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .flex-row { display: flex; gap: 15px; }
+        .flex-row > div { flex: 1; }
         
         #qrcode { background: white; padding: 20px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .pin-display { font-size: 48px; font-weight: bold; color: var(--purple); margin: 10px 0; letter-spacing: 2px; }
@@ -37,7 +39,7 @@
         .player-badge:hover::after { content: ' ✕ 踢除'; font-size: 14px; margin-left: 5px; color: #fff; }
         
         /* 題目畫面 */
-        .timer-circle { width: 80px; height: 80px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 20px auto; }
+        .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; position: relative; }
@@ -47,11 +49,13 @@
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
         .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
         
-        .option-shape { width: 30px; height: 30px; display: inline-block; border: 3px solid white; flex-shrink: 0; }
-        .shape-0 { border-radius: 50%; } .shape-1 { transform: rotate(45deg); }
-        .shape-2 { border-radius: 3px; } .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
+        .option-shape { width: 32px; height: 32px; display: inline-block; border: 3.5px solid white; flex-shrink: 0; }
+        .shape-0 { border-radius: 50%; } 
+        .shape-1 { transform: rotate(45deg); width: 26px; height: 26px; margin: 0 3px; } /* 菱形調整 */
+        .shape-2 { border-radius: 3px; } 
+        .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
         
-        .chart-container { width: 100%; max-width: 600px; height: 300px; margin: 15px auto; }
+        .chart-container { width: 100%; max-width: 650px; height: 320px; margin: 15px auto; }
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
@@ -78,20 +82,35 @@
             <div class="q-editor-block" id="q-block-0">
                 <h4>題目 #1</h4>
                 <label>題目敘述：</label>
-                <input type="text" class="q-title" value="晚餐吃什麼?" placeholder="例如：台灣最高的山是哪一座？">
+                <input type="text" class="q-title" value="晚餐吃什麼?" placeholder="例如：這題的正確圖形是？">
                 <div class="opt-row">
                     <div><label>🔴 選項一 (圓形)：</label><input type="text" class="q-opt-0" value="烏魚子"></div>
                     <div><label>🔵 選項二 (菱形)：</label><input type="text" class="q-opt-1" value="稀飯"></div>
                     <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" value="三層肉"></div>
                     <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" value="牛肉湯"></div>
                 </div>
-                <label>正確答案：</label>
-                <select class="q-ans">
-                    <option value="0" selected>🔴 選項一 (圓形)</option>
-                    <option value="1">🔵 選項二 (菱形)</option>
-                    <option value="2">🟡 選項三 (正方形)</option>
-                    <option value="3">🟢 選項四 (三角形)</option>
-                </select>
+                
+                <div class="flex-row">
+                    <div>
+                        <label>正確答案：</label>
+                        <select class="q-ans">
+                            <option value="0" selected>🔴 選項一</option>
+                            <option value="1">🔵 選項二</option>
+                            <option value="2">🟡 選項三</option>
+                            <option value="3">🟢 選項四</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>答題時間設定：</label>
+                        <select class="q-time">
+                            <option value="10">10 秒</option>
+                            <option value="20" selected>20 秒</option>
+                            <option value="30">30 秒</option>
+                            <option value="60">60 秒</option>
+                            <option value="0">🛑 手動結束（不限時）</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -122,7 +141,7 @@
         </div>
 
         <div class="options-grid" id="host-options"></div>
-        <div style="margin-top:20px; font-size:18px; font-weight: bold;" id="host-footer-btn-zone">
+        <div style="margin-top:25px; font-size:18px; font-weight: bold; display: flex; gap:20px; align-items:center;" id="host-footer-btn-zone">
             <span id="answer-counter" style="color:#666;">已答題人數: 0</span>
         </div>
     </div>
@@ -162,11 +181,9 @@
     </div>
 
     <script>
-        // 核心動態題庫陣列
         let quizData = [];
         let qCount = 1;
 
-        // 首頁新增題目欄位的函式
         function addQuestionInputBlock() {
             const container = document.getElementById('quiz-creator-zone');
             const block = document.createElement('div');
@@ -182,19 +199,32 @@
                     <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" placeholder="選項三"></div>
                     <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" placeholder="選項四"></div>
                 </div>
-                <label>正確答案：</label>
-                <select class="q-ans">
-                    <option value="0">🔴 選項一 (圓形)</option>
-                    <option value="1">🔵 選項二 (菱形)</option>
-                    <option value="2">🟡 選項三 (正方形)</option>
-                    <option value="3">🟢 選項四 (三角形)</option>
-                </select>
+                <div class="flex-row">
+                    <div>
+                        <label>正確答案：</label>
+                        <select class="q-ans">
+                            <option value="0">🔴 選項一</option>
+                            <option value="1">🔵 選項二</option>
+                            <option value="2">🟡 選項三</option>
+                            <option value="3">🟢 選項四</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>答題時間設定：</label>
+                        <select class="q-time">
+                            <option value="10">10 秒</option>
+                            <option value="20" selected>20 秒</option>
+                            <option value="30">30 秒</option>
+                            <option value="60">60 秒</option>
+                            <option value="0">🛑 手動結束（不限時）</option>
+                        </select>
+                    </div>
+                </div>
             `;
             container.appendChild(block);
             qCount++;
         }
 
-        // 讀取並打包使用者在畫面輸入的題庫
         function compileQuizData() {
             quizData = [];
             const blocks = document.querySelectorAll('.q-editor-block');
@@ -205,12 +235,14 @@
                 const o2 = b.querySelector('.q-opt-2').value.trim();
                 const o3 = b.querySelector('.q-opt-3').value.trim();
                 const ans = parseInt(b.querySelector('.q-ans').value);
+                const time = parseInt(b.querySelector('.q-time').value);
                 
                 if(title && o0 && o1 && o2 && o3) {
                     quizData.push({
                         q: title,
                         opts: [o0, o1, o2, o3],
-                        ans: ans
+                        ans: ans,
+                        timeLimit: time
                     });
                 }
             });
@@ -226,6 +258,7 @@
         let roundAnswers = {};   
         let timerInterval = null;
         let timeLeft = 20;
+        let totalTimeAllocated = 20; // 記錄當前題目的原始總時間，算分用
         let questionStartTime = 0;
         let isAcceptingAnswers = false;
         let myChart = null; 
@@ -355,15 +388,25 @@
         function showQuestion() {
             isAcceptingAnswers = true;
             roundAnswers = {};
-            timeLeft = 20;
-            
-            document.getElementById('chart-panel').style.display = 'none';
-            document.getElementById('host-timer').style.display = 'flex';
-            document.getElementById('host-footer-btn-zone').innerHTML = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
-            
-            switchScreen('screen-host-quiz');
             
             let qItem = quizData[currentIdx];
+            timeLeft = qItem.timeLimit;
+            totalTimeAllocated = timeLeft === 0 ? 30 : timeLeft; // 手動結束時，計分基礎權重設為30秒
+
+            document.getElementById('chart-panel').style.display = 'none';
+            document.getElementById('host-timer').style.display = 'flex';
+            
+            // 下方按鈕控制區（如果是手動結束，則要多放一個「立刻結束答題」按鈕）
+            let footerHtml = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
+            if (timeLeft === 0) {
+                document.getElementById('host-timer').innerText = "∞";
+                footerHtml += `<button class="btn-main" style="margin-top:0; margin-left:20px; background:var(--red); padding:8px 20px; font-size:16px;" onclick="endQuestion()">強制結束答題 ✕</button>`;
+            } else {
+                document.getElementById('host-timer').innerText = timeLeft;
+            }
+            document.getElementById('host-footer-btn-zone').innerHTML = footerHtml;
+            
+            switchScreen('screen-host-quiz');
             document.getElementById('host-question').innerText = qItem.q;
             
             let optionsHtml = '';
@@ -376,19 +419,20 @@
                     </div>`;
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
-            document.getElementById('host-timer').innerText = timeLeft;
 
             broadcast({ type: 'START_QUESTION' });
             questionStartTime = Date.now();
             
             clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('host-timer').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    endQuestion();
-                }
-            }, 1000);
+            if (timeLeft > 0) {
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('host-timer').innerText = timeLeft;
+                    if (timeLeft <= 0) {
+                        endQuestion();
+                    }
+                }, 1000);
+            }
         }
 
         function endQuestion() {
@@ -397,7 +441,6 @@
             let qItem = quizData[currentIdx];
 
             let stats = [0, 0, 0, 0];
-            // 建立二維陣列，儲存每個選項分別是「哪些玩家的名字」選的
             let voters = [[], [], [], []];
 
             for (let id in playerData) {
@@ -405,11 +448,12 @@
                 let pName = playerData[id].name;
                 if (pAnswer) {
                     stats[pAnswer.optIndex]++; 
-                    voters[pAnswer.optIndex].push(pName); // 記錄名字
+                    voters[pAnswer.optIndex].push(pName); 
                     
                     if (pAnswer.optIndex === qItem.ans) {
-                        let t = Math.min(pAnswer.timeTaken, 20);
-                        let scoreGained = Math.round((1 - ((t / 20) * 0.5)) * 1000);
+                        // 依據花費時間動態給分
+                        let t = Math.min(pAnswer.timeTaken, totalTimeAllocated);
+                        let scoreGained = Math.round((1 - ((t / totalTimeAllocated) * 0.5)) * 1000);
                         playerData[id].score += scoreGained;
                         playerData[id].lastScoreGained = scoreGained;
                         playerData[id].lastAnswerCorrect = true;
@@ -436,8 +480,7 @@
             document.getElementById('host-timer').style.display = 'none';
             document.getElementById('chart-panel').style.display = 'block';
             
-            // 渲染長條圖並傳入選民清單
-            renderChart(stats, voters);
+            renderPureShapeChart(stats, voters);
 
             qItem.opts.forEach((_, index) => {
                 let card = document.getElementById(`opt-card-${index}`);
@@ -454,45 +497,94 @@
             `;
         }
 
-        // 渲染圖表，並支援 X 軸圖形標籤與 Tooltip 顯示玩家姓名
-        function renderChart(dataValues, votersList) {
+        // 核心修改：X軸不帶任何字，利用工具包繪製出與官方完全一致的幾何圖形
+        function renderPureShapeChart(dataValues, votersList) {
             const ctx = document.getElementById('resultChart').getContext('2d');
             if (myChart) { myChart.destroy(); } 
+
+            // 用自訂外掛在 X 軸刻度繪製 Kahoot 圖形
+            const shapeLabelsPlugin = {
+                id: 'shapeLabels',
+                afterDraw: (chart) => {
+                    const { ctx, scales: { x, y } } = chart;
+                    ctx.save();
+                    
+                    x.ticks.forEach((tick, index) => {
+                        const xPos = x.getPixelForTick(index);
+                        const yPos = y.bottom + 20; // 位於圖表底端下方 20 像素
+                        const size = 18;            // 圖示半徑/大小
+
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = '#333333';
+
+                        if (index === 0) { // 🔴 圓形
+                            ctx.fillStyle = '#e21b3c';
+                            ctx.beginPath();
+                            ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI);
+                            ctx.fill(); ctx.stroke();
+                        } else if (index === 1) { // 🔵 菱形
+                            ctx.fillStyle = '#1368ce';
+                            ctx.beginPath();
+                            ctx.moveTo(xPos, yPos - size/2);
+                            ctx.lineTo(xPos + size/2, yPos);
+                            ctx.lineTo(xPos, yPos + size/2);
+                            ctx.lineTo(xPos - size/2, yPos);
+                            ctx.closePath();
+                            ctx.fill(); ctx.stroke();
+                        } else if (index === 2) { // 🟡 正方形
+                            ctx.fillStyle = '#d89e00';
+                            ctx.beginPath();
+                            ctx.rect(xPos - size/2, yPos - size/2, size, size);
+                            ctx.fill(); ctx.stroke();
+                        } else if (index === 3) { // 🟢 三角形
+                            ctx.fillStyle = '#26890c';
+                            ctx.beginPath();
+                            ctx.moveTo(xPos, yPos - size/2);
+                            ctx.lineTo(xPos + size/2, yPos + size/2);
+                            ctx.lineTo(xPos - size/2, yPos + size/2);
+                            ctx.closePath();
+                            ctx.fill(); ctx.stroke();
+                        }
+                    });
+                    ctx.restore();
+                }
+            };
 
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['○ 圓形', '◇ 菱形', '□ 正方形', '△ 三角形'], // 依照原符號文字顯示於 X 軸
+                    labels: ['', '', '', ''], // X 軸文字完全清空
                     datasets: [{
                         data: dataValues,
                         backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
-                        borderRadius: 4
+                        borderRadius: 5
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { bottom: 25 } }, // 留空間給 X 軸自訂圖形
                     plugins: { 
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
+                                title: function(context) {
+                                    const shapes = ['圓形選項', '菱形選項', '正方形選項', '三角形選項'];
+                                    return shapes[context[0].dataIndex];
+                                },
                                 label: function(context) {
-                                    let idx = context.dataIndex;
-                                    let names = votersList[idx];
-                                    if(names.length === 0) {
-                                        return " 無人選擇";
-                                    }
-                                    // 滑鼠移上去時顯示：選擇這個選項的 Player 名字
-                                    return " 選擇者: " + names.join(', ');
+                                    let names = votersList[context.dataIndex];
+                                    return names.length === 0 ? " 無人選擇" : " 選擇者: " + names.join(', ');
                                 }
                             }
                         }
                     },
                     scales: {
                         y: { beginAtZero: true, ticks: { stepSize: 1, color: '#333', font: { weight: 'bold', size: 14 } } },
-                        x: { ticks: { color: '#333', font: { size: 16, weight: 'bold' } } }
+                        x: { grid: { display: false } }
                     }
-                }
+                },
+                plugins: [shapeLabelsPlugin] // 載入圖形繪製插件
             });
         }
 
@@ -602,7 +694,6 @@
             }
         }
 
-        // 綁定動態點擊按鈕監聽 (修正為透過父節點判斷，確保動態題目按鈕皆可點選)
         document.querySelector('.pad-grid').addEventListener('click', (e) => {
             let btn = e.target.closest('.pad-btn');
             if(!btn || btn.disabled) return;
