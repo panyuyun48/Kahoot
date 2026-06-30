@@ -37,7 +37,7 @@
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
         .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
         
-        /* 核心新增：右上角常駐連線資訊面板 */
+        /* 右上角常駐連線資訊面板 */
         .persistent-lobby-info {
             position: absolute; top: 15px; right: 15px;
             background: rgba(255, 255, 255, 0.95);
@@ -53,7 +53,7 @@
         /* 題目大螢幕畫面 */
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 120px 0 20px; } /* 右邊留空避免撞到常駐面板 */
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 120px 0 20px; } 
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
@@ -74,8 +74,9 @@
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
         /* 手機玩家端樣式 */
-        .pad-screen { padding: 10px; background: #f5f5f5; }
-        .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 80px); }
+        .pad-screen { padding: 10px; background: #f5f5f5; justify-content: flex-start; }
+        .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); }
+        .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 160px); }
         .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .pad-btn:active { opacity: 0.7; }
         .status-msg { font-size: 24px; font-weight: bold; color: #555; }
@@ -88,7 +89,7 @@
             .option-card { font-size: 18px; padding: 15px; } 
             .opt-row { grid-template-columns: 1fr; }
             .question-text { padding: 0 20px; }
-            .persistent-lobby-info { position: static; margin-bottom: 15px; } /* 行動端若看主台改為頂部排列 */
+            .persistent-lobby-info { position: static; margin-bottom: 15px; } 
         }
     </style>
 </head>
@@ -163,6 +164,10 @@
     </div>
 
     <div id="screen-pad-game" class="screen pad-screen">
+        <div class="pad-quiz-header">
+            <div id="pad-header-index" style="font-size:14px; font-weight:bold; color:var(--purple);">題目 - / -</div>
+            <div id="pad-header-title" style="font-size:18px; font-weight:bold; color:#1a1a1a; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">題目名稱載入中...</div>
+        </div>
         <div class="pad-grid">
             <button class="pad-btn opt-0"><span class="option-shape shape-0"></span></button>
             <button class="pad-btn opt-1"><span class="option-shape shape-1"></span></button>
@@ -311,7 +316,7 @@
         let peer = null;
         let roomPin = '';
         let connMap = new Map(); 
-        let playerData = {};     
+        let playerData = {};     // 儲存玩家暱稱、累計總分等狀態
         let roundAnswers = {};   
         let timerInterval = null;
         let timeLeft = 20;
@@ -326,7 +331,6 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
             
-            // 核心控制邏輯：除了首頁與Lobby大廳以外，其餘大螢幕畫面一律亮起右上角常駐面板
             const persistentPanel = document.getElementById('global-persistent-panel');
             if (role === 'host' && screenId !== 'screen-host-lobby') {
                 persistentPanel.classList.add('visible');
@@ -345,7 +349,6 @@
             switchScreen('screen-host-lobby');
             roomPin = Math.floor(1000 + Math.random() * 9000).toString();
             
-            // 同步填入大廳與常駐看板的 PIN 碼文字
             document.getElementById('room-pin-text').innerText = roomPin;
             document.getElementById('persist-pin-text').innerText = roomPin;
 
@@ -353,11 +356,9 @@
             peer.on('open', (id) => {
                 const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
                 
-                // 1. 渲染大廳主要的大 QR Code
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById('qrcode'), { text: joinUrl, width: 160, height: 160 });
                 
-                // 2. 同步渲染右上角常駐面板的小 QR Code (供斷線重連使用)
                 document.getElementById('persist-qrcode').innerHTML = "";
                 new QRCode(document.getElementById('persist-qrcode'), { text: joinUrl, width: 85, height: 85 });
             });
@@ -369,17 +370,45 @@
 
         function handleHostReceivedData(conn, data) {
             if (data.type === 'JOIN') {
-                // 支援中斷重連：如果玩家本來就在名單內，直接覆蓋新連線
                 connMap.set(conn.peer, conn);
-                if (!playerData[conn.peer]) {
+                
+                // 【核心修改：中途加入與名稱比對】
+                // 檢查是否已有相同名稱的舊玩家（支援斷線換了 PeerId 或換設備、甚至中途加入的人）
+                let existingKey = null;
+                for (let key in playerData) {
+                    if (playerData[key].name === data.name) {
+                        existingKey = key;
+                        break;
+                    }
+                }
+
+                if (existingKey) {
+                    // 找到同名舊資料！把舊數據移轉至新的連線 peerId 下，並刪除舊 key
+                    playerData[conn.peer] = playerData[existingKey];
+                    if (existingKey !== conn.peer) {
+                        delete playerData[existingKey];
+                        if(roundAnswers[existingKey]) {
+                            roundAnswers[conn.peer] = roundAnswers[existingKey];
+                            delete roundAnswers[existingKey];
+                        }
+                    }
+                } else {
+                    // 全新加入的玩家：初始化分數為 0
                     playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
                 }
+
                 updateLobbyUI();
                 conn.send({ type: 'JOIN_ACK', success: true });
                 
-                // 如果該玩家是在「遊戲中」斷線重連進來，立即同步目前畫面狀態給他
+                // 【核心修改】如果玩家是「遊戲到一半中途加入/重新連線」，且目前大螢幕正處於答題階段：
                 if (isAcceptingAnswers) {
-                    conn.send({ type: 'START_QUESTION' });
+                    let qItem = quizData[currentIdx];
+                    conn.send({ 
+                        type: 'START_QUESTION',
+                        qIdx: currentIdx + 1,
+                        qTotal: quizData.length,
+                        qTitle: qItem.q
+                    });
                 }
             }
             if (data.type === 'SUBMIT_ANSWER') {
@@ -395,8 +424,7 @@
 
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
-            // 註解掉刪除玩家資料，保留分數與名字以便斷線的人可以原地重連回來繼續玩
-            // delete playerData[peerId]; 
+            // 絕不刪除 playerData[peerId]，確保分數與紀錄永久保存，供隨時重連回來對照
             updateLobbyUI();
             if (isAcceptingAnswers) {
                 let answeredCount = Object.keys(roundAnswers).length;
@@ -413,10 +441,9 @@
                 count++;
                 let badge = document.createElement('div');
                 badge.className = 'player-badge';
-                // 如果目前是斷線狀態，標記灰色提示
                 if (!connMap.has(id)) {
                     badge.style.opacity = '0.5';
-                    badge.innerText = pData.name + " (斷線)";
+                    badge.innerText = playerData[id].name + " (離線)";
                 } else {
                     badge.innerText = playerData[id].name;
                 }
@@ -462,7 +489,13 @@
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
 
-            broadcast({ type: 'START_QUESTION' });
+            // 【核心修改】推播發送題目開始，並附帶題目名稱與題號資訊給手機端
+            broadcast({ 
+                type: 'START_QUESTION', 
+                qIdx: currentIdx + 1, 
+                qTotal: quizData.length,
+                qTitle: qItem.q 
+            });
             questionStartTime = Date.now();
             
             clearInterval(timerInterval);
@@ -651,8 +684,8 @@
                 myConn.on('open', () => myConn.send({ type: 'JOIN', name: myNickname }));
                 myConn.on('data', (data) => handlePlayerReceivedData(data));
                 myConn.on('close', () => { 
-                    alert('與主控端連線中斷，正在自動嘗試重新連線...'); 
-                    // 自動重連
+                    // 當網路斷開時，彈出提示並在 1.5 秒後嘗試利用同名稱重新加入，分數將能原地承接！
+                    console.log('與主台連線中斷，正在自動進行斷線重連機制...');
                     setTimeout(connectToHost, 1500);
                 });
             });
@@ -662,15 +695,20 @@
         function handlePlayerReceivedData(data) {
             if (data.type === 'JOIN_ACK') {
                 switchScreen('screen-pad-wait');
-                document.getElementById('pad-wait-msg').innerText = "成功加入！等待房長點選開始...";
+                document.getElementById('pad-wait-msg').innerText = "成功加入！等待房長發布題目...";
             }
             if (data.type === 'START_QUESTION') {
                 switchScreen('screen-pad-game');
+                
+                // 【核心修改】更新手機網頁頂部的題目欄資訊與題號
+                document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
+                document.getElementById('pad-header-title').innerText = data.qTitle;
+
                 document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
             }
             if (data.type === 'ANSWER_ACK') {
                 switchScreen('screen-pad-wait');
-                document.getElementById('pad-wait-msg').innerText = "傳送成功！等待時間結束...";
+                document.getElementById('pad-wait-msg').innerText = "傳送成功！等待大螢幕時間結束...";
             }
             if (data.type === 'QUESTION_RESULT') {
                 switchScreen('screen-pad-result');
