@@ -22,7 +22,7 @@
         .btn-main:hover { transform: scale(1.03); background-color: #361071; }
         
         /* 題組與編輯器樣式 */
-        .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); }
+        .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); position: relative; }
         .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin: 20px 0; background: #fafafa; padding: 15px; border-radius: 0 8px 8px 0; }
         .q-editor-block h4 { color: var(--purple); margin-bottom: 10px; }
         
@@ -102,21 +102,22 @@
 
     <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
         <h1>Kahoot!! FAKE</h1>
-        <p style="margin: 10px 0 20px 0; opacity: 0.8;">您可以新增題組、或是直接匯入現有的題組 JSON 檔案！</p>
+        <p style="margin: 10px 0 20px 0; opacity: 0.8;">您可以新增題組、或是直接匯入現有的題組 TXT 檔案！</p>
         
         <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
             </div>
 
-        <input type="file" id="file-import-input" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+        <input type="file" id="file-import-input" accept=".txt" style="display: none;" onchange="handleFileImport(event)">
 
-        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;" id="welcome-action-buttons">
             <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
-            <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組檔案</button>
-            <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組</button>
+            <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組文字檔 (.txt)</button>
+            <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組 (.txt)</button>
             <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
+            <button id="btn-editor-back" class="btn-main" style="background:#666; display:none;" onclick="location.reload()">↩ 返回首頁</button>
         </div>
-        <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;">
-        <button class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
+        <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;" id="welcome-divider">
+        <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
     </div>
 
     <div id="screen-host-lobby" class="screen">
@@ -205,7 +206,8 @@
         function createNewQuizSetUI() {
             document.getElementById('quiz-workspace').innerHTML = `
                 <div class="quiz-set-container" id="current-quiz-set">
-                    <h3 style="color:var(--purple); border-bottom:2px solid #eee; padding-bottom:10px;">📋 專屬自訂題組</h3>
+                    <button onclick="location.reload()" style="position:absolute; top:15px; right:15px; background:#e0e0e0; border:none; padding:6px 12px; font-weight:bold; border-radius:4px; cursor:pointer; color:#333; font-size:13px;">✕ 關閉返回</button>
+                    <h3 style="color:var(--purple); border-bottom:2px solid #eee; padding-bottom:10px; width:80%;">📋 專屬自訂題組</h3>
                     <label>⏱️ 整個題組答題時間統一設定：</label>
                     <select id="set-global-time">
                         <option value="10">10 秒</option>
@@ -222,8 +224,12 @@
             addQuestionInnerBlock(); 
             document.getElementById('btn-add-set').style.display = 'none';
             document.getElementById('btn-import-set').style.display = 'none';
+            document.getElementById('btn-manual-join').style.display = 'none';
+            document.getElementById('welcome-divider').style.display = 'none';
+            
             document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
+            document.getElementById('btn-editor-back').style.display = 'inline-block';
         }
 
         function addQuestionInnerBlock(prefill = null) {
@@ -257,35 +263,113 @@
             localQuestionsCount++;
         }
 
+        /* 產生可讀性高、易於編輯的純文字檔 (.txt) 格式 */
         function exportQuizSetToFile() {
             compileAllInputs();
             if(quizData.length === 0) { alert('請確認題目與四個選項皆有完整填寫！'); return; }
-            const dataToExport = { timeLimit: globalTimeLimit, questions: quizData };
-            const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            
+            let txtOutput = `# 答題時間\n${globalTimeLimit}\n\n`;
+            
+            quizData.forEach((q, idx) => {
+                const ansLetter = ['A', 'B', 'C', 'D'][q.ans];
+                txtOutput += `# 題目 ${idx + 1}\n`;
+                txtOutput += `${q.q}\n`;
+                txtOutput += `A) ${q.opts[0]}\n`;
+                txtOutput += `B) ${q.opts[1]}\n`;
+                txtOutput += `C) ${q.opts[2]}\n`;
+                txtOutput += `D) ${q.opts[3]}\n`;
+                txtOutput += `🎯 正確答案: ${ansLetter}\n\n`;
+            });
+            
+            const blob = new Blob([txtOutput], { type: "text/plain;charset=utf-8" });
             const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", jsonString);
-            downloadAnchor.setAttribute("download", `kahoot_quiz_set_${Date.now()}.json`);
+            downloadAnchor.href = URL.createObjectURL(blob);
+            downloadAnchor.setAttribute("download", `kahoot_quiz_set_${Date.now()}.txt`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
         }
 
+        /* 解析自訂的直覺文字格式 (.txt) 匯入編輯器中 */
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (!parsed.questions || !Array.isArray(parsed.questions)) throw new Error('檔案格式錯誤');
+                    const text = e.target.result;
+                    const lines = text.split('\n').map(line => line.trim());
+                    
+                    let importedTimeLimit = 20;
+                    let importedQuestions = [];
+                    
+                    let currentQ = null;
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i];
+                        if (!line) continue;
+                        
+                        if (line.startsWith('# 答題時間')) {
+                            // 下一行通常就是秒數數字
+                            if (i + 1 < lines.length && !isNaN(lines[i + 1])) {
+                                importedTimeLimit = parseInt(lines[i + 1]);
+                                i++;
+                            }
+                            continue;
+                        }
+                        
+                        if (line.startsWith('# 題目')) {
+                            // 建立一個新的題目收集器
+                            currentQ = { q: '', opts: [], ans: 0 };
+                            // 下一行代表題目敘述
+                            if (i + 1 < lines.length) {
+                                currentQ.q = lines[i + 1];
+                                i++;
+                            }
+                            
+                            // 連續讀取接下來的選項 A、B、C、D 與正確答案
+                            while (i + 1 < lines.length) {
+                                let nextLine = lines[i + 1].trim();
+                                if (!nextLine || nextLine.startsWith('#')) break; // 遇到下一題或空白就跳出
+                                
+                                i++;
+                                if (nextLine.toUpperCase().startsWith('A)')) {
+                                    currentQ.opts[0] = nextLine.substring(2).trim();
+                                } else if (nextLine.toUpperCase().startsWith('B)')) {
+                                    currentQ.opts[1] = nextLine.substring(2).trim();
+                                } else if (nextLine.toUpperCase().startsWith('C)')) {
+                                    currentQ.opts[2] = nextLine.substring(2).trim();
+                                } else if (nextLine.toUpperCase().startsWith('D)')) {
+                                    currentQ.opts[3] = nextLine.substring(2).trim();
+                                } else if (nextLine.includes('正確答案:')) {
+                                    let ansPart = nextLine.split('正確答案:')[1].trim().toUpperCase();
+                                    if (ansPart.includes('A')) currentQ.ans = 0;
+                                    else if (ansPart.includes('B')) currentQ.ans = 1;
+                                    else if (ansPart.includes('C')) currentQ.ans = 2;
+                                    else if (ansPart.includes('D')) currentQ.ans = 3;
+                                }
+                            }
+                            
+                            // 驗證是否有完整填寫
+                            if (currentQ.q && currentQ.opts.length === 4) {
+                                importedQuestions.push(currentQ);
+                            }
+                        }
+                    }
+                    
+                    if (importedQuestions.length === 0) throw new Error('找不到任何有效的題目格式');
+                    
+                    // 重新建立介面並填入數據
                     createNewQuizSetUI();
-                    document.getElementById('set-global-time').value = parsed.timeLimit || 20;
+                    document.getElementById('set-global-time').value = importedTimeLimit;
                     document.getElementById('sub-questions-list').innerHTML = '';
                     localQuestionsCount = 0;
-                    parsed.questions.forEach(q => addQuestionInnerBlock(q));
-                    alert('📂 題組檔案已成功匯入！');
+                    
+                    importedQuestions.forEach(q => addQuestionInnerBlock(q));
+                    alert(`📂 文字題組檔案載入完畢！共匯入 ${importedQuestions.length} 題。`);
+                    
                 } catch (error) {
-                    alert('匯入失敗：' + error.message);
+                    alert('匯入失敗！請確保檔案格式正確。\n錯誤訊息：' + error.message);
                 }
             };
             reader.readAsText(file);
@@ -316,7 +400,7 @@
         let peer = null;
         let roomPin = '';
         let connMap = new Map(); 
-        let playerData = {};     // 儲存玩家暱稱、累計總分等狀態
+        let playerData = {};     
         let roundAnswers = {};   
         let timerInterval = null;
         let timeLeft = 20;
@@ -372,8 +456,6 @@
             if (data.type === 'JOIN') {
                 connMap.set(conn.peer, conn);
                 
-                // 【核心修改：中途加入與名稱比對】
-                // 檢查是否已有相同名稱的舊玩家（支援斷線換了 PeerId 或換設備、甚至中途加入的人）
                 let existingKey = null;
                 for (let key in playerData) {
                     if (playerData[key].name === data.name) {
@@ -383,7 +465,6 @@
                 }
 
                 if (existingKey) {
-                    // 找到同名舊資料！把舊數據移轉至新的連線 peerId 下，並刪除舊 key
                     playerData[conn.peer] = playerData[existingKey];
                     if (existingKey !== conn.peer) {
                         delete playerData[existingKey];
@@ -393,14 +474,12 @@
                         }
                     }
                 } else {
-                    // 全新加入的玩家：初始化分數為 0
                     playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
                 }
 
                 updateLobbyUI();
                 conn.send({ type: 'JOIN_ACK', success: true });
                 
-                // 【核心修改】如果玩家是「遊戲到一半中途加入/重新連線」，且目前大螢幕正處於答題階段：
                 if (isAcceptingAnswers) {
                     let qItem = quizData[currentIdx];
                     conn.send({ 
@@ -424,7 +503,6 @@
 
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
-            // 絕不刪除 playerData[peerId]，確保分數與紀錄永久保存，供隨時重連回來對照
             updateLobbyUI();
             if (isAcceptingAnswers) {
                 let answeredCount = Object.keys(roundAnswers).length;
@@ -489,7 +567,6 @@
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
 
-            // 【核心修改】推播發送題目開始，並附帶題目名稱與題號資訊給手機端
             broadcast({ 
                 type: 'START_QUESTION', 
                 qIdx: currentIdx + 1, 
@@ -684,7 +761,6 @@
                 myConn.on('open', () => myConn.send({ type: 'JOIN', name: myNickname }));
                 myConn.on('data', (data) => handlePlayerReceivedData(data));
                 myConn.on('close', () => { 
-                    // 當網路斷開時，彈出提示並在 1.5 秒後嘗試利用同名稱重新加入，分數將能原地承接！
                     console.log('與主台連線中斷，正在自動進行斷線重連機制...');
                     setTimeout(connectToHost, 1500);
                 });
@@ -700,7 +776,6 @@
             if (data.type === 'START_QUESTION') {
                 switchScreen('screen-pad-game');
                 
-                // 【核心修改】更新手機網頁頂部的題目欄資訊與題號
                 document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
                 document.getElementById('pad-header-title').innerText = data.qTitle;
 
