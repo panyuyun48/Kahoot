@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極致 Kahoot 模擬器 (自訂秒數與純圖形統計)</title>
+    <title>撲克符號版 Kahoot 模擬器 (支援題組儲存)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,110 +21,74 @@
         .btn-main { background-color: var(--purple); color: white; border: none; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
         .btn-main:hover { transform: scale(1.03); background-color: #361071; }
         
-        /* 題庫編輯區樣式 */
-        .creator-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 650px; text-align: left; margin-bottom: 20px; max-height: 60vh; overflow-y: auto; }
-        .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin-bottom: 25px; position: relative; }
+        /* 題組與編輯器樣式 */
+        .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); }
+        .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin: 20px 0; background: #fafafa; padding: 15px; border-radius: 0 8px 8px 0; }
         .q-editor-block h4 { color: var(--purple); margin-bottom: 10px; }
-        .creator-container input, .creator-container select { width: 100%; padding: 10px; margin: 6px 0 12px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        
+        .quiz-set-container label { display: block; font-weight: bold; margin-top: 10px; color: #444; }
+        .quiz-set-container input, .quiz-set-container select { width: 100%; padding: 10px; margin: 6px 0 12px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; display: block; }
+        
         .opt-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .flex-row { display: flex; gap: 15px; }
-        .flex-row > div { flex: 1; }
         
         #qrcode { background: white; padding: 20px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .pin-display { font-size: 48px; font-weight: bold; color: var(--purple); margin: 10px 0; letter-spacing: 2px; }
         
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
         .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
-        .player-badge:hover { background-color: var(--red); color: white; border-color: var(--red); transform: translateY(-2px); }
-        .player-badge:hover::after { content: ' ✕ 踢除'; font-size: 14px; margin-left: 5px; color: #fff; }
         
-        /* 題目畫面 */
+        /* 題目大螢幕畫面 */
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
-        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; position: relative; }
+        .option-card { padding: 25px; font-size: 26px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
         
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
         .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
         
-        .option-shape { width: 32px; height: 32px; display: inline-block; border: 3.5px solid white; flex-shrink: 0; }
-        .shape-0 { border-radius: 50%; } 
-        .shape-1 { transform: rotate(45deg); width: 26px; height: 26px; margin: 0 3px; } /* 菱形調整 */
-        .shape-2 { border-radius: 3px; } 
-        .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
+        /* 撲克符號大型圖示 */
+        .poker-shape { font-size: 32px; line-height: 1; display: inline-block; flex-shrink: 0; width: 35px; text-align: center; }
         
         .chart-container { width: 100%; max-width: 650px; height: 320px; margin: 15px auto; }
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        /* 手機端樣式 */
+        /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; }
         .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 80px); }
-        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; }
         .pad-btn:active { opacity: 0.7; }
+        .pad-poker-icon { font-size: 48px; }
         .status-msg { font-size: 24px; font-weight: bold; color: #555; }
         .input-group { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
-        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 18px; padding: 15px; } .opt-row { grid-template-columns: 1fr; } }
+        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 20px; padding: 15px; } .opt-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
     <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
         <h1>互動搶答 Kahoot 模擬器</h1>
-        <p style="margin: 10px 0 20px 0; opacity: 0.8;">請先在下方設計您的題庫，再點擊「開啟大螢幕主台」</p>
+        <p style="margin: 10px 0 20px 0; opacity: 0.8;">請先點擊下方建立題組，設計完成後儲存即可開賽！</p>
         
-        <div class="creator-container" id="quiz-creator-zone">
-            <div class="q-editor-block" id="q-block-0">
-                <h4>題目 #1</h4>
-                <label>題目敘述：</label>
-                <input type="text" class="q-title" value="晚餐吃什麼?" placeholder="例如：這題的正確圖形是？">
-                <div class="opt-row">
-                    <div><label>🔴 選項一 (圓形)：</label><input type="text" class="q-opt-0" value="烏魚子"></div>
-                    <div><label>🔵 選項二 (菱形)：</label><input type="text" class="q-opt-1" value="稀飯"></div>
-                    <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" value="三層肉"></div>
-                    <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" value="牛肉湯"></div>
-                </div>
-                
-                <div class="flex-row">
-                    <div>
-                        <label>正確答案：</label>
-                        <select class="q-ans">
-                            <option value="0" selected>🔴 選項一</option>
-                            <option value="1">🔵 選項二</option>
-                            <option value="2">🟡 選項三</option>
-                            <option value="3">🟢 選項四</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>答題時間設定：</label>
-                        <select class="q-time">
-                            <option value="10">10 秒</option>
-                            <option value="20" selected>20 秒</option>
-                            <option value="30">30 秒</option>
-                            <option value="60">60 秒</option>
-                            <option value="0">🛑 手動結束（不限時）</option>
-                        </select>
-                    </div>
-                </div>
+        <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
             </div>
-        </div>
 
-        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-            <button class="btn-main" style="background:#00c853;" onclick="addQuestionInputBlock()">＋ 新增一題</button>
-            <button class="btn-main" onclick="initHost()">開啟大螢幕主台 (Host)</button>
+        <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
+            <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
+            <button id="btn-save-set" class="btn-main" style="background:#ff9100; display:none;" onclick="saveQuizSetToStorage()">💾 儲存題組</button>
+            <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
         </div>
-        <hr style="width:100%; max-width:650px; opacity:0.2; margin:10px 0;">
+        <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;">
         <button class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
     </div>
 
     <div id="screen-host-lobby" class="screen">
         <h2>📢 玩家加入中...</h2>
-        <p style="color:#666; margin-top:5px;">(提示：點擊玩家名字可將其踢除)</p>
         <div id="qrcode"></div>
         <div class="pin-display">房間 ID: <span id="room-pin-text">---</span></div>
         <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">已加入的玩家 (<span id="player-count">0</span>):</div>
@@ -168,10 +132,10 @@
 
     <div id="screen-pad-game" class="screen pad-screen">
         <div class="pad-grid">
-            <button class="pad-btn opt-0"><span class="option-shape shape-0"></span></button>
-            <button class="pad-btn opt-1"><span class="option-shape shape-1"></span></button>
-            <button class="pad-btn opt-2"><span class="option-shape shape-2"></span></button>
-            <button class="pad-btn opt-3"><span class="option-shape shape-3"></span></button>
+            <button class="pad-btn opt-0"><span class="pad-poker-icon">♣</span></button>
+            <button class="pad-btn opt-1"><span class="pad-poker-icon">♦</span></button>
+            <button class="pad-btn opt-2"><span class="pad-poker-icon">♥</span></button>
+            <button class="pad-btn opt-3"><span class="pad-poker-icon">♠</span></button>
         </div>
     </div>
 
@@ -181,53 +145,121 @@
     </div>
 
     <script>
+        const pokerIcons = ['♣', '♦', '♥', '♠'];
+        let globalTimeLimit = 20; 
         let quizData = [];
-        let qCount = 1;
+        let localQuestionsCount = 0;
 
-        function addQuestionInputBlock() {
-            const container = document.getElementById('quiz-creator-zone');
-            const block = document.createElement('div');
-            block.className = 'q-editor-block';
-            block.id = `q-block-${qCount}`;
-            block.innerHTML = `
-                <h4>題目 #${qCount + 1}</h4>
-                <label>題目敘述：</label>
-                <input type="text" class="q-title" placeholder="請輸入題目">
-                <div class="opt-row">
-                    <div><label>🔴 選項一 (圓形)：</label><input type="text" class="q-opt-0" placeholder="選項一"></div>
-                    <div><label>🔵 選項二 (菱形)：</label><input type="text" class="q-opt-1" placeholder="選項二"></div>
-                    <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" placeholder="選項三"></div>
-                    <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" placeholder="選項四"></div>
-                </div>
-                <div class="flex-row">
-                    <div>
-                        <label>正確答案：</label>
-                        <select class="q-ans">
-                            <option value="0">🔴 選項一</option>
-                            <option value="1">🔵 選項二</option>
-                            <option value="2">🟡 選項三</option>
-                            <option value="3">🟢 選項四</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>答題時間設定：</label>
-                        <select class="q-time">
-                            <option value="10">10 秒</option>
-                            <option value="20" selected>20 秒</option>
-                            <option value="30">30 秒</option>
-                            <option value="60">60 秒</option>
-                            <option value="0">🛑 手動結束（不限時）</option>
-                        </select>
-                    </div>
+        // 頁面載入時檢查是否有暫存的題組
+        window.onload = function() {
+            const savedData = localStorage.getItem('kahoot_saved_set');
+            if(savedData) {
+                const parsed = JSON.parse(savedData);
+                restoreQuizSetUI(parsed.timeLimit, parsed.questions);
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const rId = urlParams.get('room');
+            if (rId) {
+                switchScreen('screen-pad-login');
+                document.getElementById('pad-pin-input').value = rId;
+            }
+        };
+
+        // UI：創建全新題组區塊
+        function createNewQuizSetUI() {
+            document.getElementById('quiz-workspace').innerHTML = `
+                <div class="quiz-set-container" id="current-quiz-set">
+                    <h3 style="color:var(--purple); border-bottom:2px solid #eee; padding-bottom:10px;">📋 專屬自訂題組</h3>
+                    
+                    <label>⏱️ 整個題組答題時間統一設定：</label>
+                    <select id="set-global-time">
+                        <option value="10">10 秒</option>
+                        <option value="20" selected>20 秒</option>
+                        <option value="30">30 秒</option>
+                        <option value="60">60 秒</option>
+                        <option value="0">🛑 手動結束（不限時）</option>
+                    </select>
+
+                    <div id="sub-questions-list"></div>
+                    
+                    <button class="btn-main" style="background:#0085ff; font-size:16px; padding:8px 20px; width:100%;" onclick="addQuestionInnerBlock()">＋ 在此題組內新增題目</button>
                 </div>
             `;
-            container.appendChild(block);
-            qCount++;
+            localQuestionsCount = 0;
+            addQuestionInnerBlock(); // 預設直接塞一題
+            
+            document.getElementById('btn-add-set').style.display = 'none';
+            document.getElementById('btn-save-set').style.display = 'inline-block';
+            document.getElementById('btn-host-start').style.display = 'inline-block';
         }
 
-        function compileQuizData() {
+        // UI：在現有題組內嵌新增一題
+        function addQuestionInnerBlock(prefill = null) {
+            const listContainer = document.getElementById('sub-questions-list');
+            const bIdx = localQuestionsCount;
+            const block = document.createElement('div');
+            block.className = 'q-editor-block';
+            block.id = `inner-q-block-${bIdx}`;
+            
+            block.innerHTML = `
+                <h4>題目 #${bIdx + 1}</h4>
+                <label>題目敘述：</label>
+                <input type="text" class="q-title" value="${prefill ? prefill.q : ''}" placeholder="請輸入搶答題目">
+                <div class="opt-row">
+                    <div><label>🔴 ♣ 選項一：</label><input type="text" class="q-opt-0" value="${prefill ? prefill.opts[0] : ''}" placeholder="答案一"></div>
+                    <div><label>🔵 ♦ 選項二：</label><input type="text" class="q-opt-1" value="${prefill ? prefill.opts[1] : ''}" placeholder="答案二"></div>
+                    <div><label>🟡 ♥ 選項三：</label><input type="text" class="q-opt-2" value="${prefill ? prefill.opts[2] : ''}" placeholder="答案三"></div>
+                    <div><label>🟢 ♠ 選項四：</label><input type="text" class="q-opt-3" value="${prefill ? prefill.opts[3] : ''}" placeholder="答案四"></div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label style="display:inline-block; margin-right:10px;">🎯 正確答案：</label>
+                    <select class="q-ans" style="display:inline-block; width:auto; min-width:150px;">
+                        <option value="0" ${prefill && prefill.ans===0 ? 'selected':''}>🔴 ♣ 選項一</option>
+                        <option value="1" ${prefill && prefill.ans===1 ? 'selected':''}>🔵 ♦ 選項二</option>
+                        <option value="2" ${prefill && prefill.ans===2 ? 'selected':''}>🟡 ♥ 選項三</option>
+                        <option value="3" ${prefill && prefill.ans===3 ? 'selected':''}>🟢 ♠ 選項四</option>
+                    </select>
+                </div>
+            `;
+            listContainer.appendChild(block);
+            localQuestionsCount++;
+        }
+
+        // 功能：從 LocalStorage 讀取並還原當初存的 UI
+        function restoreQuizSetUI(globalTime, questions) {
+            createNewQuizSetUI();
+            document.getElementById('set-global-time').value = globalTime;
+            document.getElementById('sub-questions-list').innerHTML = '';
+            localQuestionsCount = 0;
+            questions.forEach(q => {
+                addQuestionInnerBlock(q);
+            });
+        }
+
+        // 功能：打包目前欄位資料並儲存至瀏覽器快取
+        function saveQuizSetToStorage() {
+            compileAllInputs();
+            if(quizData.length === 0) {
+                alert('請確認題目與四個選項皆有完整填寫！');
+                return;
+            }
+            const dataToSave = {
+                timeLimit: globalTimeLimit,
+                questions: quizData
+            };
+            localStorage.setItem('kahoot_saved_set', JSON.stringify(dataToSave));
+            alert('💾 題組已成功儲存！重新整理網頁也不會消失囉。');
+        }
+
+        // 功能：將前端 UI 轉換成系統執行時陣列
+        function compileAllInputs() {
             quizData = [];
-            const blocks = document.querySelectorAll('.q-editor-block');
+            const setDom = document.getElementById('current-quiz-set');
+            if(!setDom) return;
+
+            globalTimeLimit = parseInt(document.getElementById('set-global-time').value);
+            const blocks = setDom.querySelectorAll('.q-editor-block');
             blocks.forEach(b => {
                 const title = b.querySelector('.q-title').value.trim();
                 const o0 = b.querySelector('.q-opt-0').value.trim();
@@ -235,14 +267,13 @@
                 const o2 = b.querySelector('.q-opt-2').value.trim();
                 const o3 = b.querySelector('.q-opt-3').value.trim();
                 const ans = parseInt(b.querySelector('.q-ans').value);
-                const time = parseInt(b.querySelector('.q-time').value);
                 
                 if(title && o0 && o1 && o2 && o3) {
                     quizData.push({
                         q: title,
                         opts: [o0, o1, o2, o3],
                         ans: ans,
-                        timeLimit: time
+                        timeLimit: globalTimeLimit
                     });
                 }
             });
@@ -258,7 +289,7 @@
         let roundAnswers = {};   
         let timerInterval = null;
         let timeLeft = 20;
-        let totalTimeAllocated = 20; // 記錄當前題目的原始總時間，算分用
+        let totalTimeAllocated = 20;
         let questionStartTime = 0;
         let isAcceptingAnswers = false;
         let myChart = null; 
@@ -271,22 +302,13 @@
             document.getElementById(screenId).classList.add('active');
         }
 
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const rId = urlParams.get('room');
-            if (rId) {
-                switchScreen('screen-pad-login');
-                document.getElementById('pad-pin-input').value = rId;
-            }
-        };
-
         /* =====================================================================
-           主控端邏輯 (Host)
+           主控端遊戲邏輯 (Host)
            ===================================================================== */
         function initHost() {
-            compileQuizData();
+            compileAllInputs();
             if(quizData.length === 0) {
-                alert('請至少完整填寫一組題目與四個選項！');
+                alert('請至少填寫一組完整的題目與四個選項！');
                 return;
             }
 
@@ -353,17 +375,6 @@
             }
         }
 
-        function kickPlayer(peerId) {
-            let conn = connMap.get(peerId);
-            if (conn) {
-                conn.send({ type: 'KICKED' });
-                setTimeout(() => {
-                    conn.close();
-                    removePlayerFromState(peerId);
-                }, 100);
-            }
-        }
-
         function updateLobbyUI() {
             const lobby = document.getElementById('lobby-players');
             lobby.innerHTML = '';
@@ -373,7 +384,6 @@
                 let badge = document.createElement('div');
                 badge.className = 'player-badge';
                 badge.innerText = playerData[id].name;
-                badge.onclick = () => kickPlayer(id);
                 lobby.appendChild(badge);
             }
             document.getElementById('player-count').innerText = count;
@@ -391,12 +401,11 @@
             
             let qItem = quizData[currentIdx];
             timeLeft = qItem.timeLimit;
-            totalTimeAllocated = timeLeft === 0 ? 30 : timeLeft; // 手動結束時，計分基礎權重設為30秒
+            totalTimeAllocated = timeLeft === 0 ? 30 : timeLeft;
 
             document.getElementById('chart-panel').style.display = 'none';
             document.getElementById('host-timer').style.display = 'flex';
             
-            // 下方按鈕控制區（如果是手動結束，則要多放一個「立刻結束答題」按鈕）
             let footerHtml = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
             if (timeLeft === 0) {
                 document.getElementById('host-timer').innerText = "∞";
@@ -410,11 +419,10 @@
             document.getElementById('host-question').innerText = qItem.q;
             
             let optionsHtml = '';
-            const shapes = ['shape-0', 'shape-1', 'shape-2', 'shape-3'];
             qItem.opts.forEach((opt, index) => {
                 optionsHtml += `
                     <div class="option-card opt-${index}" id="opt-card-${index}">
-                        <span class="option-shape ${shapes[index]}"></span>
+                        <span class="poker-shape">${pokerIcons[index]}</span>
                         <span class="opt-text-val">${opt}</span>
                     </div>`;
             });
@@ -451,7 +459,6 @@
                     voters[pAnswer.optIndex].push(pName); 
                     
                     if (pAnswer.optIndex === qItem.ans) {
-                        // 依據花費時間動態給分
                         let t = Math.min(pAnswer.timeTaken, totalTimeAllocated);
                         let scoreGained = Math.round((1 - ((t / totalTimeAllocated) * 0.5)) * 1000);
                         playerData[id].score += scoreGained;
@@ -480,7 +487,7 @@
             document.getElementById('host-timer').style.display = 'none';
             document.getElementById('chart-panel').style.display = 'block';
             
-            renderPureShapeChart(stats, voters);
+            renderPokerChart(stats, voters);
 
             qItem.opts.forEach((_, index) => {
                 let card = document.getElementById(`opt-card-${index}`);
@@ -497,54 +504,27 @@
             `;
         }
 
-        // 核心修改：X軸不帶任何字，利用工具包繪製出與官方完全一致的幾何圖形
-        function renderPureShapeChart(dataValues, votersList) {
+        // 利用 Chart.js 套件繪製純撲克牌四符號 X 軸
+        function renderPokerChart(dataValues, votersList) {
             const ctx = document.getElementById('resultChart').getContext('2d');
             if (myChart) { myChart.destroy(); } 
 
-            // 用自訂外掛在 X 軸刻度繪製 Kahoot 圖形
-            const shapeLabelsPlugin = {
-                id: 'shapeLabels',
+            const pokerLabelsPlugin = {
+                id: 'pokerLabels',
                 afterDraw: (chart) => {
                     const { ctx, scales: { x, y } } = chart;
                     ctx.save();
-                    
                     x.ticks.forEach((tick, index) => {
                         const xPos = x.getPixelForTick(index);
-                        const yPos = y.bottom + 20; // 位於圖表底端下方 20 像素
-                        const size = 18;            // 圖示半徑/大小
-
-                        ctx.lineWidth = 3;
-                        ctx.strokeStyle = '#333333';
-
-                        if (index === 0) { // 🔴 圓形
-                            ctx.fillStyle = '#e21b3c';
-                            ctx.beginPath();
-                            ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI);
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 1) { // 🔵 菱形
-                            ctx.fillStyle = '#1368ce';
-                            ctx.beginPath();
-                            ctx.moveTo(xPos, yPos - size/2);
-                            ctx.lineTo(xPos + size/2, yPos);
-                            ctx.lineTo(xPos, yPos + size/2);
-                            ctx.lineTo(xPos - size/2, yPos);
-                            ctx.closePath();
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 2) { // 🟡 正方形
-                            ctx.fillStyle = '#d89e00';
-                            ctx.beginPath();
-                            ctx.rect(xPos - size/2, yPos - size/2, size, size);
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 3) { // 🟢 三角形
-                            ctx.fillStyle = '#26890c';
-                            ctx.beginPath();
-                            ctx.moveTo(xPos, yPos - size/2);
-                            ctx.lineTo(xPos + size/2, yPos + size/2);
-                            ctx.lineTo(xPos - size/2, yPos + size/2);
-                            ctx.closePath();
-                            ctx.fill(); ctx.stroke();
-                        }
+                        const yPos = y.bottom + 25; 
+                        
+                        ctx.font = "bold 26px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        
+                        // 依造撲克分配顏色與符號
+                        ctx.fillStyle = ['#e21b3c', '#1368ce', '#d89e00', '#26890c'][index];
+                        ctx.fillText(pokerIcons[index], xPos, yPos);
                     });
                     ctx.restore();
                 }
@@ -553,7 +533,7 @@
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['', '', '', ''], // X 軸文字完全清空
+                    labels: ['', '', '', ''], 
                     datasets: [{
                         data: dataValues,
                         backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
@@ -563,14 +543,14 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: { padding: { bottom: 25 } }, // 留空間給 X 軸自訂圖形
+                    layout: { padding: { bottom: 20 } }, 
                     plugins: { 
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    const shapes = ['圓形選項', '菱形選項', '正方形選項', '三角形選項'];
-                                    return shapes[context[0].dataIndex];
+                                    const suits = ['♣ 梅花選項', '♦ 方塊選項', '♥ 愛心選項', '♠ 黑桃選項'];
+                                    return suits[context[0].dataIndex];
                                 },
                                 label: function(context) {
                                     let names = votersList[context.dataIndex];
@@ -584,13 +564,12 @@
                         x: { grid: { display: false } }
                     }
                 },
-                plugins: [shapeLabelsPlugin] // 載入圖形繪製插件
+                plugins: [pokerLabelsPlugin]
             });
         }
 
         function showLeaderboard() {
             switchScreen('screen-host-rank');
-            
             if(currentIdx === quizData.length - 1) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 document.getElementById('btn-next').innerText = "再玩一次 ↺";
@@ -630,7 +609,7 @@
         }
 
         /* =====================================================================
-           玩家手機遙控端邏輯 (Player)
+           玩家手機端邏輯 (Player)
            ===================================================================== */
         function connectToHost() {
             let pin = document.getElementById('pad-pin-input').value.trim();
@@ -646,21 +625,17 @@
             
             peer.on('open', (id) => {
                 myConn = peer.connect('kahoot-room-' + pin);
-                
                 myConn.on('open', () => {
                     myConn.send({ type: 'JOIN', name: myNickname });
                 });
-
                 myConn.on('data', (data) => {
                     handlePlayerReceivedData(data);
                 });
-
                 myConn.on('close', () => {
                     alert('與主控端連線中斷。');
                     location.reload();
                 });
             });
-
             peer.on('error', (err) => {
                 alert('找不到該房間，請確認房間 ID 是否正確。');
             });
@@ -687,10 +662,6 @@
                 document.getElementById('screen-pad-result').style.backgroundColor = resBg;
                 document.getElementById('pad-result-title').innerText = resTitle;
                 document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
-            }
-            if (data.type === 'KICKED') {
-                alert('你已被房長移出遊戲房間！');
-                location.reload();
             }
         }
 
