@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kahoot 模擬器</title>
+    <title>Kahoot!!</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -38,7 +38,8 @@
         .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
         
         /* 題目大螢幕畫面 */
-        .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
+        .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
@@ -48,12 +49,12 @@
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
         .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
         
-        /* 幾何圖形樣式 */
-        .option-shape { width: 32px; height: 32px; display: inline-block; border: 3.5px solid white; flex-shrink: 0; }
+        /* 幾何圖形實心樣式 */
+        .option-shape { width: 30px; height: 30px; display: inline-block; background-color: white; flex-shrink: 0; }
         .shape-0 { border-radius: 50%; } 
-        .shape-1 { transform: rotate(45deg); width: 26px; height: 26px; margin: 0 3px; } 
+        .shape-1 { transform: rotate(45deg); width: 24px; height: 24px; margin: 0 3px; } 
         .shape-2 { border-radius: 3px; } 
-        .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
+        .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); width: 34px; height: 30px; background-color: white; }
         
         .chart-container { width: 100%; max-width: 650px; height: 320px; margin: 15px auto; }
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
@@ -76,14 +77,17 @@
 
     <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
         <h1>Kahoot!! Fake</h1>
-        <p style="margin: 10px 0 20px 0; opacity: 0.8;">請先點擊下方建立題組，設計完成後儲存即可開賽！</p>
+        <p style="margin: 10px 0 20px 0; opacity: 0.8;">您可以新增題組、或是直接匯入現有的題組 JSON 檔案！</p>
         
         <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
             </div>
 
-        <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
+        <input type="file" id="file-import-input" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
             <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
-            <button id="btn-save-set" class="btn-main" style="background:#ff9100; display:none;" onclick="saveQuizSetToStorage()">💾 儲存題組</button>
+            <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組檔案</button>
+            <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組</button>
             <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
         </div>
         <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;">
@@ -100,6 +104,7 @@
     </div>
 
     <div id="screen-host-quiz" class="screen">
+        <div class="quiz-progress-text" id="host-quiz-progress">題目 0 / 0</div>
         <div class="timer-circle" id="host-timer">20</div>
         <div class="question-text" id="host-question">題目載入中...</div>
         
@@ -152,14 +157,8 @@
         let quizData = [];
         let localQuestionsCount = 0;
 
-        // 檢查快取是否有暫存題組
         window.onload = function() {
-            const savedData = localStorage.getItem('kahoot_saved_set');
-            if(savedData) {
-                const parsed = JSON.parse(savedData);
-                restoreQuizSetUI(parsed.timeLimit, parsed.questions);
-            }
-            
+            // 解析 URL 自動填入房間 ID
             const urlParams = new URLSearchParams(window.location.search);
             const rId = urlParams.get('room');
             if (rId) {
@@ -168,6 +167,7 @@
             }
         };
 
+        // 建立題組 UI
         function createNewQuizSetUI() {
             document.getElementById('quiz-workspace').innerHTML = `
                 <div class="quiz-set-container" id="current-quiz-set">
@@ -191,10 +191,12 @@
             addQuestionInnerBlock(); 
             
             document.getElementById('btn-add-set').style.display = 'none';
-            document.getElementById('btn-save-set').style.display = 'inline-block';
+            document.getElementById('btn-import-set').style.display = 'none';
+            document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
         }
 
+        // 新增單一題目區塊
         function addQuestionInnerBlock(prefill = null) {
             const listContainer = document.getElementById('sub-questions-list');
             const bIdx = localQuestionsCount;
@@ -226,30 +228,57 @@
             localQuestionsCount++;
         }
 
-        function restoreQuizSetUI(globalTime, questions) {
-            createNewQuizSetUI();
-            document.getElementById('set-global-time').value = globalTime;
-            document.getElementById('sub-questions-list').innerHTML = '';
-            localQuestionsCount = 0;
-            questions.forEach(q => {
-                addQuestionInnerBlock(q);
-            });
-        }
-
-        function saveQuizSetToStorage() {
+        // 功能：匯出目前設計的題組為 JSON 檔案
+        function exportQuizSetToFile() {
             compileAllInputs();
             if(quizData.length === 0) {
                 alert('請確認題目與四個選項皆有完整填寫！');
                 return;
             }
-            const dataToSave = {
+            const dataToExport = {
                 timeLimit: globalTimeLimit,
                 questions: quizData
             };
-            localStorage.setItem('kahoot_saved_set', JSON.stringify(dataToSave));
-            alert('💾 題組已成功儲存！重新整理網頁也不會消失囉。');
+            
+            const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", jsonString);
+            downloadAnchor.setAttribute("download", `kahoot_quiz_set_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
         }
 
+        // 功能：讀取外部匯入的 JSON 題組
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+                        throw new Error('檔案格式錯誤，找不到題目列表。');
+                    }
+                    // 還原到畫面
+                    createNewQuizSetUI();
+                    document.getElementById('set-global-time').value = parsed.timeLimit || 20;
+                    document.getElementById('sub-questions-list').innerHTML = '';
+                    localQuestionsCount = 0;
+                    parsed.questions.forEach(q => {
+                        addQuestionInnerBlock(q);
+                    });
+                    alert('📂 題組檔案已成功匯入！您可以繼續編輯或直接開啟大螢幕開賽。');
+                } catch (error) {
+                    alert('匯入失敗：' + error.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // 清空選擇狀態
+        }
+
+        // 打包輸入欄位
         function compileAllInputs() {
             quizData = [];
             const setDom = document.getElementById('current-quiz-set');
@@ -305,7 +334,7 @@
         function initHost() {
             compileAllInputs();
             if(quizData.length === 0) {
-                alert('請至少填寫一組完整的題目與四個選項！');
+                alert('請確認至少填寫了一組完整的題目與四個選項！');
                 return;
             }
 
@@ -402,6 +431,9 @@
 
             document.getElementById('chart-panel').style.display = 'none';
             document.getElementById('host-timer').style.display = 'flex';
+            
+            // 核心修改：更新進度條文字 (目前題號 / 總題數)
+            document.getElementById('host-quiz-progress').innerText = `題目 ${currentIdx + 1} / ${quizData.length}`;
             
             let footerHtml = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
             if (timeLeft === 0) {
@@ -502,7 +534,7 @@
             `;
         }
 
-        // 用 2D Canvas 自訂繪製純幾何圖形 X 軸 (不含文字說明)
+        // 用 2D Canvas 自訂繪製純幾何圖形 X 軸 (實心填滿)
         function renderShapeChart(dataValues, votersList) {
             const ctx = document.getElementById('resultChart').getContext('2d');
             if (myChart) { myChart.destroy(); } 
@@ -517,36 +549,18 @@
                         const yPos = y.bottom + 20; 
                         const size = 18;            
 
-                        ctx.lineWidth = 3;
-                        ctx.strokeStyle = '#333333';
-
-                        if (index === 0) { // 🔴 圓形
+                        if (index === 0) {
                             ctx.fillStyle = '#e21b3c';
-                            ctx.beginPath();
-                            ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI);
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 1) { // 🔵 菱形
+                            ctx.beginPath(); ctx.arc(xPos, yPos, size/2, 0, 2 * Math.PI); ctx.fill();
+                        } else if (index === 1) {
                             ctx.fillStyle = '#1368ce';
-                            ctx.beginPath();
-                            ctx.moveTo(xPos, yPos - size/2);
-                            ctx.lineTo(xPos + size/2, yPos);
-                            ctx.lineTo(xPos, yPos + size/2);
-                            ctx.lineTo(xPos - size/2, yPos);
-                            ctx.closePath();
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 2) { // 🟡 正方形
+                            ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos); ctx.lineTo(xPos, yPos + size/2); ctx.lineTo(xPos - size/2, yPos); ctx.closePath(); ctx.fill();
+                        } else if (index === 2) {
                             ctx.fillStyle = '#d89e00';
-                            ctx.beginPath();
-                            ctx.rect(xPos - size/2, yPos - size/2, size, size);
-                            ctx.fill(); ctx.stroke();
-                        } else if (index === 3) { // 🟢 三角形
+                            ctx.beginPath(); ctx.rect(xPos - size/2, yPos - size/2, size, size); ctx.fill();
+                        } else if (index === 3) {
                             ctx.fillStyle = '#26890c';
-                            ctx.beginPath();
-                            ctx.moveTo(xPos, yPos - size/2);
-                            ctx.lineTo(xPos + size/2, yPos + size/2);
-                            ctx.lineTo(xPos - size/2, yPos + size/2);
-                            ctx.closePath();
-                            ctx.fill(); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(xPos, yPos - size/2); ctx.lineTo(xPos + size/2, yPos + size/2); ctx.lineTo(xPos - size/2, yPos + size/2); ctx.closePath(); ctx.fill();
                         }
                     });
                     ctx.restore();
@@ -595,9 +609,9 @@
             switchScreen('screen-host-rank');
             if(currentIdx === quizData.length - 1) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
-                document.getElementById('btn-next').innerText = "再玩一次 ↺";
+                document.getElementById('btn-next').innerText = "回首頁 ↺";
             } else {
-                document.getElementById('rank-title').innerText = "目前積分榜";
+                document.getElementById('rank-title').innerText = `目前積分榜 (完賽進度: ${currentIdx + 1} / ${quizData.length})`;
                 document.getElementById('btn-next').innerText = "下一題 ❯";
             }
 
