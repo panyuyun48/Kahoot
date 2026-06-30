@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>互動搶答 Kahoot 模擬器 (含答題統計長條圖)</title>
+    <title>自訂題庫互動搶答 Kahoot 模擬器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,18 +15,22 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f2f2f2; color: var(--dark); overflow-x: hidden; }
         
-        /* 基礎版面結構 */
         .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
         .screen.active { display: flex; }
         
-        /* 大螢幕主控端樣式 */
-        .btn-main { background-color: var(--purple); color: white; border: none; padding: 15px 40px; font-size: 24px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 20px; }
-        .btn-main:hover { transform: scale(1.05); background-color: #361071; }
+        .btn-main { background-color: var(--purple); color: white; border: none; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
+        .btn-main:hover { transform: scale(1.03); background-color: #361071; }
+        
+        /* 題庫編輯區樣式 */
+        .creator-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 650px; text-align: left; margin-bottom: 20px; max-height: 60vh; overflow-y: auto; }
+        .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin-bottom: 25px; }
+        .q-editor-block h4 { color: var(--purple); margin-bottom: 10px; }
+        .creator-container input, .creator-container select { width: 100%; padding: 10px; margin: 6px 0 12px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        .opt-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         
         #qrcode { background: white; padding: 20px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .pin-display { font-size: 48px; font-weight: bold; color: var(--purple); margin: 10px 0; letter-spacing: 2px; }
         
-        /* 玩家列表與踢人效果 */
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
         .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; transition: all 0.2s; }
         .player-badge:hover { background-color: var(--red); color: white; border-color: var(--red); transform: translateY(-2px); }
@@ -37,7 +41,7 @@
         .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
         .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; position: relative; }
-        .option-card.fade-out { opacity: 0.25; transform: scale(0.95); } /* 答題結束後，沒被選的正確答案會變淡 */
+        .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
         
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
@@ -47,14 +51,11 @@
         .shape-0 { border-radius: 50%; } .shape-1 { transform: rotate(45deg); }
         .shape-2 { border-radius: 3px; } .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
         
-        /* 統計圖表容器 */
-        .chart-container { width: 100%; max-width: 500px; height: 250px; margin: 15px auto; }
-
-        /* 排行榜與統計 */
+        .chart-container { width: 100%; max-width: 600px; height: 300px; margin: 15px auto; }
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        /* 手機端客制樣式 */
+        /* 手機端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; }
         .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 80px); }
         .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -64,21 +65,47 @@
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
-        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 18px; padding: 15px; } }
+        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 18px; padding: 15px; } .opt-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-    <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white;">
+    <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
         <h1>互動搶答 Kahoot 模擬器</h1>
-        <p style="margin: 15px; opacity: 0.8;">請選擇此裝置要作為「大螢幕主控台」或「玩家手機端」</p>
-        <button class="btn-main" onclick="initHost()">開啟大螢幕主台 (Host)</button>
-        <button class="btn-main" style="background:#0085ff; margin-top:15px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
+        <p style="margin: 10px 0 20px 0; opacity: 0.8;">請先在下方設計您的題庫，再點擊「開啟大螢幕主台」</p>
+        
+        <div class="creator-container" id="quiz-creator-zone">
+            <div class="q-editor-block" id="q-block-0">
+                <h4>題目 #1</h4>
+                <label>題目敘述：</label>
+                <input type="text" class="q-title" value="晚餐吃什麼?" placeholder="例如：台灣最高的山是哪一座？">
+                <div class="opt-row">
+                    <div><label>🔴 選項一 (圓形)：</label><input type="text" class="q-opt-0" value="烏魚子"></div>
+                    <div><label>🔵 選項二 (菱形)：</label><input type="text" class="q-opt-1" value="稀飯"></div>
+                    <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" value="三層肉"></div>
+                    <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" value="牛肉湯"></div>
+                </div>
+                <label>正確答案：</label>
+                <select class="q-ans">
+                    <option value="0" selected>🔴 選項一 (圓形)</option>
+                    <option value="1">🔵 選項二 (菱形)</option>
+                    <option value="2">🟡 選項三 (正方形)</option>
+                    <option value="3">🟢 選項四 (三角形)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <button class="btn-main" style="background:#00c853;" onclick="addQuestionInputBlock()">＋ 新增一題</button>
+            <button class="btn-main" onclick="initHost()">開啟大螢幕主台 (Host)</button>
+        </div>
+        <hr style="width:100%; max-width:650px; opacity:0.2; margin:10px 0;">
+        <button class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
     </div>
 
     <div id="screen-host-lobby" class="screen">
         <h2>📢 玩家加入中...</h2>
-        <p style="color:#666; margin-top:5px;">(提示：主辦人可「點擊玩家名字」將其踢除房間)</p>
+        <p style="color:#666; margin-top:5px;">(提示：點擊玩家名字可將其踢除)</p>
         <div id="qrcode"></div>
         <div class="pin-display">房間 ID: <span id="room-pin-text">---</span></div>
         <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">已加入的玩家 (<span id="player-count">0</span>):</div>
@@ -95,7 +122,6 @@
         </div>
 
         <div class="options-grid" id="host-options"></div>
-        
         <div style="margin-top:20px; font-size:18px; font-weight: bold;" id="host-footer-btn-zone">
             <span id="answer-counter" style="color:#666;">已答題人數: 0</span>
         </div>
@@ -104,9 +130,8 @@
     <div id="screen-host-rank" class="screen">
         <h2 id="rank-title">目前積分榜</h2>
         <div class="leaderboard-list" id="leaderboard-dom"></div>
-        <button class="btn-main" id="btn-next" onclick="nextQuestion()">下一題</button>
+        <button class="btn-main" id="btn-next" onclick="nextQuestion()">下一題 ❯</button>
     </div>
-
 
     <div id="screen-pad-login" class="screen" style="background: var(--purple);">
         <div class="input-group">
@@ -124,10 +149,10 @@
 
     <div id="screen-pad-game" class="screen pad-screen">
         <div class="pad-grid">
-            <button class="pad-btn opt-0" onclick="submitAnswer(0)"><span class="option-shape shape-0"></span></button>
-            <button class="pad-btn opt-1" onclick="submitAnswer(1)"><span class="option-shape shape-1"></span></button>
-            <button class="pad-btn opt-2" onclick="submitAnswer(2)"><span class="option-shape shape-2"></span></button>
-            <button class="pad-btn opt-3" onclick="submitAnswer(3)"><span class="option-shape shape-3"></span></button>
+            <button class="pad-btn opt-0"><span class="option-shape shape-0"></span></button>
+            <button class="pad-btn opt-1"><span class="option-shape shape-1"></span></button>
+            <button class="pad-btn opt-2"><span class="option-shape shape-2"></span></button>
+            <button class="pad-btn opt-3"><span class="option-shape shape-3"></span></button>
         </div>
     </div>
 
@@ -137,18 +162,65 @@
     </div>
 
     <script>
-        // --- 題庫資料設定 ---
-        const quizData = [
-            { q: "Q1. 晚餐吃什麼?", opts: ["烏魚子", "稀飯", "三層肉", "牛肉湯"], ans: 0 },
-            { q: "Q2. 早餐吃什麼?", opts: ["三明治", "漢堡", "豬排", "燒肉"], ans: 1 }
-        ];
+        // 核心動態題庫陣列
+        let quizData = [];
+        let qCount = 1;
+
+        // 首頁新增題目欄位的函式
+        function addQuestionInputBlock() {
+            const container = document.getElementById('quiz-creator-zone');
+            const block = document.createElement('div');
+            block.className = 'q-editor-block';
+            block.id = `q-block-${qCount}`;
+            block.innerHTML = `
+                <h4>題目 #${qCount + 1}</h4>
+                <label>題目敘述：</label>
+                <input type="text" class="q-title" placeholder="請輸入題目">
+                <div class="opt-row">
+                    <div><label>🔴 選項一 (圓形)：</label><input type="text" class="q-opt-0" placeholder="選項一"></div>
+                    <div><label>🔵 選項二 (菱形)：</label><input type="text" class="q-opt-1" placeholder="選項二"></div>
+                    <div><label>🟡 選項三 (正方形)：</label><input type="text" class="q-opt-2" placeholder="選項三"></div>
+                    <div><label>🟢 選項四 (三角形)：</label><input type="text" class="q-opt-3" placeholder="選項四"></div>
+                </div>
+                <label>正確答案：</label>
+                <select class="q-ans">
+                    <option value="0">🔴 選項一 (圓形)</option>
+                    <option value="1">🔵 選項二 (菱形)</option>
+                    <option value="2">🟡 選項三 (正方形)</option>
+                    <option value="3">🟢 選項四 (三角形)</option>
+                </select>
+            `;
+            container.appendChild(block);
+            qCount++;
+        }
+
+        // 讀取並打包使用者在畫面輸入的題庫
+        function compileQuizData() {
+            quizData = [];
+            const blocks = document.querySelectorAll('.q-editor-block');
+            blocks.forEach(b => {
+                const title = b.querySelector('.q-title').value.trim();
+                const o0 = b.querySelector('.q-opt-0').value.trim();
+                const o1 = b.querySelector('.q-opt-1').value.trim();
+                const o2 = b.querySelector('.q-opt-2').value.trim();
+                const o3 = b.querySelector('.q-opt-3').value.trim();
+                const ans = parseInt(b.querySelector('.q-ans').value);
+                
+                if(title && o0 && o1 && o2 && o3) {
+                    quizData.push({
+                        q: title,
+                        opts: [o0, o1, o2, o3],
+                        ans: ans
+                    });
+                }
+            });
+        }
 
         let currentIdx = 0;
         let role = ''; 
         let peer = null;
         let roomPin = '';
         
-        // Host 專用變數
         let connMap = new Map(); 
         let playerData = {};     
         let roundAnswers = {};   
@@ -156,9 +228,8 @@
         let timeLeft = 20;
         let questionStartTime = 0;
         let isAcceptingAnswers = false;
-        let myChart = null; // 統計圖表實例
+        let myChart = null; 
 
-        // Player 專用變數
         let myConn = null;
         let myNickname = '';
 
@@ -180,6 +251,12 @@
            主控端邏輯 (Host)
            ===================================================================== */
         function initHost() {
+            compileQuizData();
+            if(quizData.length === 0) {
+                alert('請至少完整填寫一組題目與四個選項！');
+                return;
+            }
+
             role = 'host';
             switchScreen('screen-host-lobby');
             
@@ -280,7 +357,6 @@
             roundAnswers = {};
             timeLeft = 20;
             
-            // 重置大螢幕統計介面
             document.getElementById('chart-panel').style.display = 'none';
             document.getElementById('host-timer').style.display = 'flex';
             document.getElementById('host-footer-btn-zone').innerHTML = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
@@ -320,14 +396,16 @@
             isAcceptingAnswers = false;
             let qItem = quizData[currentIdx];
 
-            // 1. 初始化統計計數器 (統計四個選項分別多少人選)
             let stats = [0, 0, 0, 0];
+            // 建立二維陣列，儲存每個選項分別是「哪些玩家的名字」選的
+            let voters = [[], [], [], []];
 
-            // 2. 計算分數與統計作答分布
             for (let id in playerData) {
                 let pAnswer = roundAnswers[id];
+                let pName = playerData[id].name;
                 if (pAnswer) {
-                    stats[pAnswer.optIndex]++; // 計入統計圖
+                    stats[pAnswer.optIndex]++; 
+                    voters[pAnswer.optIndex].push(pName); // 記錄名字
                     
                     if (pAnswer.optIndex === qItem.ans) {
                         let t = Math.min(pAnswer.timeTaken, 20);
@@ -355,12 +433,12 @@
                 }
             }
 
-            // 3. 大螢幕效果：隱藏倒數計時，顯現長條圖統計
             document.getElementById('host-timer').style.display = 'none';
             document.getElementById('chart-panel').style.display = 'block';
-            renderChart(stats);
+            
+            // 渲染長條圖並傳入選民清單
+            renderChart(stats, voters);
 
-            // 4. 大螢幕效果：公布正解（非正解的選項變淡，正解框起來）
             qItem.opts.forEach((_, index) => {
                 let card = document.getElementById(`opt-card-${index}`);
                 if (index === qItem.ans) {
@@ -371,22 +449,20 @@
                 }
             });
 
-            // 5. 將下方計數文字替換成「查看排行榜」按鈕
             document.getElementById('host-footer-btn-zone').innerHTML = `
                 <button class="btn-main" style="margin-top:0; padding:10px 30px; font-size:18px;" onclick="showLeaderboard()">看目前排名 ❯</button>
             `;
         }
 
-        // 使用 Chart.js 畫出 Kahoot 風格的即時統計圖
-        function renderChart(dataValues) {
+        // 渲染圖表，並支援 X 軸圖形標籤與 Tooltip 顯示玩家姓名
+        function renderChart(dataValues, votersList) {
             const ctx = document.getElementById('resultChart').getContext('2d');
-            
-            if (myChart) { myChart.destroy(); } // 銷毀舊圖表重畫
+            if (myChart) { myChart.destroy(); } 
 
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['🔴', '🔵', '🟡', '🟢'], // 用幾何圖形代替標籤
+                    labels: ['○ 圓形', '◇ 菱形', '□ 正方形', '△ 三角形'], // 依照原符號文字顯示於 X 軸
                     datasets: [{
                         data: dataValues,
                         backgroundColor: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'],
@@ -396,10 +472,25 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let idx = context.dataIndex;
+                                    let names = votersList[idx];
+                                    if(names.length === 0) {
+                                        return " 無人選擇";
+                                    }
+                                    // 滑鼠移上去時顯示：選擇這個選項的 Player 名字
+                                    return " 選擇者: " + names.join(', ');
+                                }
+                            }
+                        }
+                    },
                     scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#333', font: { weight: 'bold' } } },
-                        x: { ticks: { font: { size: 24 } } }
+                        y: { beginAtZero: true, ticks: { stepSize: 1, color: '#333', font: { weight: 'bold', size: 14 } } },
+                        x: { ticks: { color: '#333', font: { size: 16, weight: 'bold' } } }
                     }
                 }
             });
@@ -410,7 +501,7 @@
             
             if(currentIdx === quizData.length - 1) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
-                document.getElementById('btn-next').innerText = "再玩一次";
+                document.getElementById('btn-next').innerText = "再玩一次 ↺";
             } else {
                 document.getElementById('rank-title').innerText = "目前積分榜";
                 document.getElementById('btn-next').innerText = "下一題 ❯";
@@ -445,7 +536,6 @@
         function broadcast(msg) {
             connMap.forEach(conn => conn.send(msg));
         }
-
 
         /* =====================================================================
            玩家手機遙控端邏輯 (Player)
@@ -512,12 +602,17 @@
             }
         }
 
-        function submitAnswer(optIdx) {
+        // 綁定動態點擊按鈕監聽 (修正為透過父節點判斷，確保動態題目按鈕皆可點選)
+        document.querySelector('.pad-grid').addEventListener('click', (e) => {
+            let btn = e.target.closest('.pad-btn');
+            if(!btn || btn.disabled) return;
+            
             document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
+            let optIdx = Array.from(document.querySelectorAll('.pad-btn')).indexOf(btn);
             if (myConn) {
                 myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
             }
-        }
+        });
     </script>
 </body>
 </html>
