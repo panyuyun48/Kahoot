@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動搶答 Kahoot 模擬器 (含踢人功能)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --red: #e21b3c; --blue: #1368ce; --green: #26890c; --yellow: #d89e00;
+            --purple: #46178f; --dark: #1a1a1a; --white: #ffffff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f2f2f2; color: var(--dark); overflow-x: hidden; }
+        
+        /* 基礎版面結構 */
+        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .screen.active { display: flex; }
+        
+        /* 大螢幕主控端樣式 */
+        .btn-main { background-color: var(--purple); color: white; border: none; padding: 15px 40px; font-size: 24px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 20px; }
+        .btn-main:hover { transform: scale(1.05); background-color: #361071; }
+        
+        #qrcode { background: white; padding: 20px; border-radius: 12px; margin: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .pin-display { font-size: 48px; font-weight: bold; color: var(--purple); margin: 10px 0; letter-spacing: 2px; }
+        
+        /* 玩家列表與踢人效果 */
+        .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
+        .player-badge { background: white; padding: 10px 25px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); animation: pop 0.3s ease; cursor: pointer; position: relative; transition: all 0.2s; }
+        .player-badge:hover { background-color: var(--red); color: white; border-color: var(--red); transform: translateY(-2px); }
+        .player-badge:hover::after { content: ' ✕ 踢除'; font-size: 14px; margin-left: 5px; color: #fff; }
+        
+        /* 題目畫面 */
+        .timer-circle { width: 80px; height: 80px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 20px auto; }
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; }
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1000px; padding: 10px; }
+        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; position: relative; }
+        .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
+        .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
+        .option-shape { width: 30px; height: 30px; display: inline-block; border: 3px solid white; flex-shrink: 0; }
+        .shape-0 { border-radius: 50%; } .shape-1 { transform: rotate(45deg); }
+        .shape-2 { border-radius: 3px; } .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: white; width: 34px; height: 30px; border:none; }
+        
+        /* 排行榜與統計 */
+        .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
+        .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        /* 手機端客制樣式 */
+        .pad-screen { padding: 10px; background: #f5f5f5; }
+        .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 80px); }
+        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pad-btn:active { opacity: 0.7; }
+        .status-msg { font-size: 24px; font-weight: bold; color: #555; }
+        .input-group { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
+        .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
+        
+        @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
+        @media(max-width: 768px) { .options-grid { grid-template-columns: 1fr; } .option-card { font-size: 18px; padding: 15px; } }
+    </style>
+</head>
+<body>
+
+    <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white;">
+        <h1>互動搶答 Kahoot 模擬器</h1>
+        <p style="margin: 15px; opacity: 0.8;">請選擇此裝置要作為「大螢幕主控台」或「玩家手機端」</p>
+        <button class="btn-main" onclick="initHost()">開啟大螢幕主台 (Host)</button>
+        <button class="btn-main" style="background:#0085ff; margin-top:15px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
+    </div>
+
+    <div id="screen-host-lobby" class="screen">
+        <h2>📢 玩家加入中...</h2>
+        <p style="color:#666; margin-top:5px;">(提示：主辦人可「點擊玩家名字」將其踢除房間)</p>
+        <div id="qrcode"></div>
+        <div class="pin-display">房間 ID: <span id="room-pin-text">---</span></div>
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">已加入的玩家 (<span id="player-count">0</span>):</div>
+        <div class="player-list" id="lobby-players"></div>
+        <button id="btn-start-game" class="btn-main" style="display:none;" onclick="startQuiz()">開始遊戲</button>
+    </div>
+
+    <div id="screen-host-quiz" class="screen">
+        <div class="timer-circle" id="host-timer">20</div>
+        <div class="question-text" id="host-question">題目載入中...</div>
+        <div class="options-grid" id="host-options"></div>
+        <div style="margin-top:20px; font-size:18px; color:#666;" id="answer-counter">已答題人數: 0</div>
+    </div>
+
+    <div id="screen-host-rank" class="screen">
+        <h2 id="rank-title">本題結束</h2>
+        <div style="font-size:22px; color:var(--green); font-weight:bold; margin:10px;" id="correct-answer-reveal">正確答案：</div>
+        <div class="leaderboard-list" id="leaderboard-dom"></div>
+        <button class="btn-main" id="btn-next" onclick="nextQuestion()">下一題</button>
+    </div>
+
+
+    <div id="screen-pad-login" class="screen" style="background: var(--purple);">
+        <div class="input-group">
+            <h3 style="color:var(--purple); text-align:center;">加入 Kahoot 遊戲</h3>
+            <input type="text" id="pad-pin-input" placeholder="請輸入房間 ID">
+            <input type="text" id="pad-name-input" placeholder="請輸入您的暱稱" maxlength="10">
+            <button class="btn-main" style="width:100%; margin-top:5px;" onclick="connectToHost()">進入遊戲</button>
+            <button class="btn-main" style="width:100%; margin-top:10px; background:#666; font-size:14px; padding:5px;" onclick="location.reload()">返回首頁</button>
+        </div>
+    </div>
+
+    <div id="screen-pad-wait" class="screen" style="background: var(--blue); color:white;">
+        <div class="status-msg" style="color:white;" id="pad-wait-msg">成功加入！請看大螢幕等待開賽...</div>
+    </div>
+
+    <div id="screen-pad-game" class="screen pad-screen">
+        <div class="pad-grid">
+            <button class="pad-btn opt-0" onclick="submitAnswer(0)"><span class="option-shape shape-0"></span></button>
+            <button class="pad-btn opt-1" onclick="submitAnswer(1)"><span class="option-shape shape-1"></span></button>
+            <button class="pad-btn opt-2" onclick="submitAnswer(2)"><span class="option-shape shape-2"></span></button>
+            <button class="pad-btn opt-3" onclick="submitAnswer(3)"><span class="option-shape shape-3"></span></button>
+        </div>
+    </div>
+
+    <div id="screen-pad-result" class="screen" style="color:white;">
+        <h1 id="pad-result-title">已送出答案</h1>
+        <p style="font-size:20px; margin-top:15px;" id="pad-result-score">+0 分</p>
+    </div>
+
+    <script>
+        // --- 題庫資料設定 ---
+        const quizData = [
+            { q: "Q1. 晚餐吃什麼?", opts: ["烏魚子", "稀飯", "三層肉", "牛肉湯"], ans: 0 },
+            { q: "Q2. 早餐吃什麼?", opts: ["三明治", "漢堡", "豬排", "燒肉"], ans: 1 }
+        ];
+
+        let currentIdx = 0;
+        let role = ''; 
+        let peer = null;
+        let roomPin = '';
+        
+        // Host 專用變數
+        let connMap = new Map(); 
+        let playerData = {};     
+        let roundAnswers = {};   
+        let timerInterval = null;
+        let timeLeft = 20;
+        let questionStartTime = 0;
+        let isAcceptingAnswers = false;
+
+        // Player 專用變數
+        let myConn = null;
+        let myNickname = '';
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rId = urlParams.get('room');
+            if (rId) {
+                switchScreen('screen-pad-login');
+                document.getElementById('pad-pin-input').value = rId;
+            }
+        };
+
+        /* =====================================================================
+           主控端邏輯 (Host)
+           ===================================================================== */
+        function initHost() {
+            role = 'host';
+            switchScreen('screen-host-lobby');
+            
+            roomPin = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('room-pin-text').innerText = roomPin;
+
+            peer = new Peer('kahoot-room-' + roomPin);
+
+            peer.on('open', (id) => {
+                const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
+                document.getElementById('qrcode').innerHTML = "";
+                new QRCode(document.getElementById('qrcode'), { text: joinUrl, width: 160, height: 160 });
+            });
+
+            peer.on('connection', (conn) => {
+                conn.on('data', (data) => {
+                    handleHostReceivedData(conn, data);
+                });
+                conn.on('close', () => {
+                    removePlayerFromState(conn.peer);
+                });
+            });
+        }
+
+        function handleHostReceivedData(conn, data) {
+            if (data.type === 'JOIN') {
+                connMap.set(conn.peer, conn);
+                playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
+                updateLobbyUI();
+                conn.send({ type: 'JOIN_ACK', success: true });
+            }
+            if (data.type === 'SUBMIT_ANSWER') {
+                if (!isAcceptingAnswers || roundAnswers[conn.peer]) return;
+                
+                let timeTaken = (Date.now() - questionStartTime) / 1000;
+                roundAnswers[conn.peer] = { optIndex: data.optIdx, timeTaken: timeTaken };
+                
+                let answeredCount = Object.keys(roundAnswers).length;
+                document.getElementById('answer-counter').innerText = `已答題人數: ${answeredCount}`;
+                
+                conn.send({ type: 'ANSWER_ACK' });
+
+                if (answeredCount >= connMap.size) {
+                    endQuestion();
+                }
+            }
+        }
+
+        // 移除玩家核心邏輯
+        function removePlayerFromState(peerId) {
+            connMap.delete(peerId);
+            delete playerData[peerId];
+            delete roundAnswers[peerId];
+            updateLobbyUI();
+            
+            // 處理如果在遊戲中有人退出，檢查是否所有人都已答題
+            if (isAcceptingAnswers) {
+                let answeredCount = Object.keys(roundAnswers).length;
+                document.getElementById('answer-counter').innerText = `已答題人數: ${answeredCount}`;
+                if (connMap.size > 0 && answeredCount >= connMap.size) {
+                    endQuestion();
+                }
+            }
+        }
+
+        // 主辦方手動踢人功能
+        function kickPlayer(peerId) {
+            let conn = connMap.get(peerId);
+            if (conn) {
+                // 發信通知對方被踢除
+                conn.send({ type: 'KICKED' });
+                setTimeout(() => {
+                    conn.close();
+                    removePlayerFromState(peerId);
+                }, 100);
+            }
+        }
+
+        function updateLobbyUI() {
+            const lobby = document.getElementById('lobby-players');
+            lobby.innerHTML = '';
+            let count = 0;
+            for (let id in playerData) {
+                count++;
+                let badge = document.createElement('div');
+                badge.className = 'player-badge';
+                badge.innerText = playerData[id].name;
+                // 綁定點擊事件，點了就踢人
+                badge.onclick = () => kickPlayer(id);
+                lobby.appendChild(badge);
+            }
+            document.getElementById('player-count').innerText = count;
+            document.getElementById('btn-start-game').style.display = count > 0 ? 'inline-block' : 'none';
+        }
+
+        function startQuiz() {
+            currentIdx = 0;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            isAcceptingAnswers = true;
+            roundAnswers = {};
+            timeLeft = 20;
+            
+            document.getElementById('answer-counter').innerText = `已答題人數: 0`;
+            switchScreen('screen-host-quiz');
+            
+            let qItem = quizData[currentIdx];
+            document.getElementById('host-question').innerText = qItem.q;
+            
+            let optionsHtml = '';
+            const shapes = ['shape-0', 'shape-1', 'shape-2', 'shape-3'];
+            qItem.opts.forEach((opt, index) => {
+                optionsHtml += `
+                    <div class="option-card opt-${index}">
+                        <span class="option-shape ${shapes[index]}"></span>
+                        ${opt}
+                    </div>`;
+            });
+            document.getElementById('host-options').innerHTML = optionsHtml;
+            document.getElementById('host-timer').innerText = timeLeft;
+
+            broadcast({ type: 'START_QUESTION' });
+            questionStartTime = Date.now();
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('host-timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    endQuestion();
+                }
+            }, 1000);
+        }
+
+        function endQuestion() {
+            clearInterval(timerInterval);
+            isAcceptingAnswers = false;
+            let qItem = quizData[currentIdx];
+
+            for (let id in playerData) {
+                let pAnswer = roundAnswers[id];
+                if (pAnswer && pAnswer.optIndex === qItem.ans) {
+                    let t = Math.min(pAnswer.timeTaken, 20);
+                    let scoreGained = Math.round((1 - ((t / 20) * 0.5)) * 1000);
+                    
+                    playerData[id].score += scoreGained;
+                    playerData[id].lastScoreGained = scoreGained;
+                    playerData[id].lastAnswerCorrect = true;
+                } else {
+                    playerData[id].lastScoreGained = 0;
+                    playerData[id].lastAnswerCorrect = false;
+                }
+
+                let pConn = connMap.get(id);
+                if (pConn) {
+                    pConn.send({
+                        type: 'QUESTION_RESULT',
+                        isCorrect: playerData[id].lastAnswerCorrect,
+                        scoreGained: playerData[id].lastScoreGained,
+                        totalScore: playerData[id].score
+                    });
+                }
+            }
+            showLeaderboard();
+        }
+
+        function showLeaderboard() {
+            switchScreen('screen-host-rank');
+            let qItem = quizData[currentIdx];
+            document.getElementById('correct-answer-reveal').innerText = `正確答案：${qItem.opts[qItem.ans]}`;
+            
+            if(currentIdx === quizData.length - 1) {
+                document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
+                document.getElementById('btn-next').innerText = "再玩一次";
+            } else {
+                document.getElementById('rank-title').innerText = "目前積分榜";
+                document.getElementById('btn-next').innerText = "下一題";
+            }
+
+            let sorted = Object.keys(playerData).map(id => ({
+                name: playerData[id].name,
+                score: playerData[id].score
+            })).sort((a,b) => b.score - a.score);
+
+            let rankHtml = '';
+            sorted.forEach((p, idx) => {
+                rankHtml += `
+                    <div class="leaderboard-item">
+                        <span>${idx+1}. ${p.name}</span>
+                        <span>${p.score} pts</span>
+                    </div>`;
+            });
+            document.getElementById('leaderboard-dom').innerHTML = rankHtml;
+        }
+
+        function nextQuestion() {
+            if(currentIdx < quizData.length - 1) {
+                currentIdx++;
+                showQuestion();
+            } else {
+                location.reload();
+            }
+        }
+
+        function broadcast(msg) {
+            connMap.forEach(conn => conn.send(msg));
+        }
+
+
+        /* =====================================================================
+           玩家手機遙控端邏輯 (Player)
+           ===================================================================== */
+        function connectToHost() {
+            let pin = document.getElementById('pad-pin-input').value.trim();
+            myNickname = document.getElementById('pad-name-input').value.trim();
+
+            if(!pin || !myNickname) {
+                alert('請填入房間 ID 與暱稱！');
+                return;
+            }
+
+            role = 'player';
+            peer = new Peer();
+            
+            peer.on('open', (id) => {
+                myConn = peer.connect('kahoot-room-' + pin);
+                
+                myConn.on('open', () => {
+                    myConn.send({ type: 'JOIN', name: myNickname });
+                });
+
+                myConn.on('data', (data) => {
+                    handlePlayerReceivedData(data);
+                });
+
+                myConn.on('close', () => {
+                    alert('與主控端連線中斷。');
+                    location.reload();
+                });
+            });
+
+            peer.on('error', (err) => {
+                alert('找不到該房間，請確認房間 ID 是否正確。');
+            });
+        }
+
+        function handlePlayerReceivedData(data) {
+            if (data.type === 'JOIN_ACK') {
+                switchScreen('screen-pad-wait');
+                document.getElementById('pad-wait-msg').innerText = "成功加入！等待房長點選開始...";
+            }
+            if (data.type === 'START_QUESTION') {
+                switchScreen('screen-pad-game');
+                document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
+            }
+            if (data.type === 'ANSWER_ACK') {
+                switchScreen('screen-pad-wait');
+                document.getElementById('pad-wait-msg').innerText = "傳送成功！等待其他人作答...";
+            }
+            if (data.type === 'QUESTION_RESULT') {
+                switchScreen('screen-pad-result');
+                const resBg = data.isCorrect ? 'var(--green)' : 'var(--red)';
+                const resTitle = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
+                
+                document.getElementById('screen-pad-result').style.backgroundColor = resBg;
+                document.getElementById('pad-result-title').innerText = resTitle;
+                document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
+            }
+            if (data.type === 'KICKED') {
+                alert('你已被房長移出遊戲房間！');
+                location.reload();
+            }
+        }
+
+        function submitAnswer(optIdx) {
+            document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
+            if (myConn) {
+                myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
+            }
+        }
+    </script>
+</body>
+</html>
