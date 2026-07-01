@@ -271,6 +271,17 @@
     </div>
 
     <script>
+        // 加入免費且穩定的 Google STUN 伺服器，優化手機網路 (4G/5G) NAT 穿透率
+        const webrtcConfig = {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
         let globalTimeLimit = 20; 
         let quizData = [];
         let localQuestionsCount = 0;
@@ -558,6 +569,8 @@
         let myChart = null; 
         let myConn = null;
         let myNickname = '';
+        let playerRetryCount = 0;
+        const MAX_RETRIES = 3;
 
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -586,7 +599,8 @@
             document.getElementById('room-pin-text').innerText = roomPin;
             document.getElementById('persist-pin-text').innerText = roomPin;
 
-            peer = new Peer('kahoot-room-' + roomPin);
+            // 實例化 Host 時也帶入 STUN 設定
+            peer = new Peer('kahoot-room-' + roomPin, webrtcConfig);
             peer.on('open', (id) => {
                 const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
                 
@@ -986,7 +1000,6 @@
             if(isFinalRound) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 
-                // --- 新增：回到首頁選項 ---
                 rankActionsDom.innerHTML = `
                     <button class="btn-main" style="background:#0085ff; padding: 15px 35px; font-size: 22px;" onclick="location.reload()">🏠 回到首頁</button>
                     <button class="btn-main" style="background:#00c853; padding: 15px 35px; font-size: 22px;" onclick="playAgain()">🔄 再玩一次</button>
@@ -1054,32 +1067,53 @@
         function broadcast(msg) { connMap.forEach(conn => conn.send(msg)); }
 
         /* =====================================================================
-           玩家手機端邏輯 (Player)
+           玩家手機端邏輯 (Player) - 加入自動重連機制
            ===================================================================== */
-        function connectToHost() {
+        function connectToHost(isRetry = false) {
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
             if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
             
+            if (!isRetry) playerRetryCount = 0;
+
             const loginBtn = document.querySelector("#screen-pad-login .btn-main");
-            const originalText = loginBtn.innerText;
-            loginBtn.innerText = "⏳ 正在連線中...";
+            loginBtn.innerText = isRetry ? `⏳ 重新連線中 (${playerRetryCount}/${MAX_RETRIES})...` : "⏳ 正在連線中...";
             loginBtn.disabled = true;
 
             role = 'player';
-            peer = new Peer();
+            if (peer) {
+                peer.destroy(); // 確保清除舊的 Peer 狀態
+            }
+
+            peer = new Peer(webrtcConfig); // 套用帶有 STUN 的設定
+            
             peer.on('open', (id) => {
-                myConn = peer.connect('kahoot-room-' + pin);
-                myConn.on('open', () => myConn.send({ type: 'JOIN', name: myNickname }));
+                // 開啟可靠傳輸模式 (reliable) 防止封包掉落
+                myConn = peer.connect('kahoot-room-' + pin, { reliable: true });
+                
+                myConn.on('open', () => {
+                    playerRetryCount = 0; // 連線成功，重置重試計數
+                    myConn.send({ type: 'JOIN', name: myNickname });
+                });
+                
                 myConn.on('data', (data) => handlePlayerReceivedData(data));
+                
                 myConn.on('close', () => { 
                     console.log('與主台連線中斷...');
                 });
             });
+
             peer.on('error', (err) => {
-                alert('找不到該房間，請確認房間 ID 是否正確。');
-                loginBtn.innerText = originalText;
-                loginBtn.disabled = false;
+                console.error('Peer連線錯誤:', err);
+                if (playerRetryCount < MAX_RETRIES) {
+                    playerRetryCount++;
+                    // 延遲 1.5 秒後嘗試重新連線
+                    setTimeout(() => connectToHost(true), 1500); 
+                } else {
+                    alert('連線失敗！\n1. 請確認房間 ID 是否正確。\n2. 請檢查網路，或嘗試開關飛航模式後再試。');
+                    loginBtn.innerText = "進入遊戲";
+                    loginBtn.disabled = false;
+                }
             });
         }
 
