@@ -81,7 +81,7 @@
         
         /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; justify-content: flex-start; }
-        .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; } /* 加大 margin-top 給固定暱稱空間 */
+        .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; } 
         .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 160px); }
         .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: white; font-size: 18px; font-weight: bold; }
         .pad-btn:active { opacity: 0.7; }
@@ -139,7 +139,7 @@
             <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
         </div>
         <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;" id="welcome-divider">
-        <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">玩家 (Player)</button>
+        <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">玩家 (Player) 加入遊戲</button>
     </div>
 
     <div id="screen-host-lobby" class="screen">
@@ -209,7 +209,7 @@
 
     <div id="screen-pad-result" class="screen" style="color:white;">
         <h1 id="pad-result-title">已送出答案</h1>
-        <p style="font-size:20px; margin-top:15px;" id="pad-result-score">+0 分</p>
+        <p style="font-size:20px; margin-top:15px; white-space: pre-line;" id="pad-result-score">+0 分</p>
     </div>
 
     <div id="screen-pad-final" class="screen" style="background: linear-gradient(135deg, #110326 0%, #46178f 100%); color:white;">
@@ -252,14 +252,12 @@
             localQuestionsCount = 0;
             addQuestionInnerBlock(); 
             
-            // 隱藏原本主畫面的按鈕
             document.getElementById('btn-add-set').style.display = 'none';
             document.getElementById('btn-import-set').style.display = 'none';
             document.getElementById('btn-download-template').style.display = 'none';
             document.getElementById('btn-manual-join').style.display = 'none';
             document.getElementById('welcome-divider').style.display = 'none';
             
-            // 顯示題組編輯模式專屬的按鈕
             document.getElementById('btn-editor-back').style.display = 'inline-block';
             document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
@@ -296,9 +294,8 @@
             localQuestionsCount++;
         }
 
-        /* 下載純文字題組模板 (已恢復並更新為最新版格式) */
         function downloadTemplate() {
-            const templateText = `答題時間\n20\n\n1\n這是一道範例題目\n\n選項A\n選項B VVV\n選項C\n選項D\n\n2\n這是第二道範例題目\n\n選項A\n選項B\n選項C\n選項D VVV\n`;
+            const templateText = `答題時間\n0\n\n1\n題目\n\n選項A\n選項B VVV\n選項C\n選項D\n\n\n2\n題目\n\n選項A\n選項B\n選項C\n選項D VVV\n\n\n3\n題目\n\n選項A VVV\n選項B\n選項C\n選項D\n`;
             const blob = new Blob([templateText], { type: "text/plain;charset=utf-8" });
             const downloadAnchor = document.createElement('a');
             downloadAnchor.href = URL.createObjectURL(blob);
@@ -308,7 +305,6 @@
             downloadAnchor.remove();
         }
 
-        /* 產生完全符合附件格式的純文字檔 */
         function exportQuizSetToFile() {
             compileAllInputs();
             if(quizData.length === 0) { alert('請確認題目與四個選項皆有完整填寫！'); return; }
@@ -321,7 +317,7 @@
                 txtOutput += `${q.opts[0]}${q.ans === 0 ? ' VVV' : ''}\n`;
                 txtOutput += `${q.opts[1]}${q.ans === 1 ? ' VVV' : ''}\n`;
                 txtOutput += `${q.opts[2]}${q.ans === 2 ? ' VVV' : ''}\n`;
-                txtOutput += `${q.opts[3]}${q.ans === 3 ? ' VVV' : ''}\n\n`;
+                txtOutput += `${q.opts[3]}${q.ans === 3 ? ' VVV' : ''}\n\n\n`;
             });
             
             const blob = new Blob([txtOutput], { type: "text/plain;charset=utf-8" });
@@ -333,7 +329,6 @@
             downloadAnchor.remove();
         }
 
-        /* 解析附件乾淨文字格式 (.txt) */
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -348,7 +343,6 @@
                     
                     let i = 0;
                     while (i < lines.length) {
-                        // 解析時間
                         if (lines[i].includes('答題時間')) {
                             i++;
                             while(i < lines.length && lines[i] === '') i++;
@@ -356,7 +350,6 @@
                                 importedTimeLimit = parseInt(lines[i]);
                             }
                         }
-                        // 遇到數字開頭代表新題目
                         else if (/^\d+$/.test(lines[i])) { 
                             i++;
                             while(i < lines.length && lines[i] === '') i++;
@@ -367,7 +360,6 @@
                             
                             let opts = [];
                             let ans = 0;
-                            // 讀取四個選項
                             for(let j=0; j<4; j++) {
                                 if(i < lines.length) {
                                     let optText = lines[i];
@@ -493,13 +485,11 @@
                 }
 
                 if (existingKey) {
-                    // 已恢復：重複 ID 阻擋邏輯
                     if (connMap.has(existingKey)) {
                         conn.send({ type: 'JOIN_FAIL', reason: '❌ 此暱稱已在遊戲中，請更換其他暱稱！' });
                         return;
                     }
                     
-                    // 已恢復：斷線重連繼承分數邏輯
                     playerData[conn.peer] = playerData[existingKey];
                     if (existingKey !== conn.peer) {
                         delete playerData[existingKey];
@@ -523,7 +513,7 @@
                         qIdx: currentIdx + 1,
                         qTotal: quizData.length,
                         qTitle: qItem.q,
-                        qOpts: qItem.opts // 新增：傳遞選項內容
+                        qOpts: qItem.opts 
                     });
                 }
             }
@@ -553,7 +543,6 @@
 
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
-            // 斷線時不刪除 playerData，保留紀錄以便後續同 ID 玩家重連
             if (roundAnswers[peerId]) delete roundAnswers[peerId];
             
             updatePlayerListsUI();
@@ -635,7 +624,6 @@
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
 
-            // 已恢復：將選項 (qOpts) 一併傳送給玩家
             broadcast({ 
                 type: 'START_QUESTION', 
                 qIdx: currentIdx + 1, 
@@ -699,7 +687,8 @@
                         type: 'QUESTION_RESULT',
                         isCorrect: playerData[id].lastAnswerCorrect,
                         scoreGained: playerData[id].lastScoreGained,
-                        totalScore: playerData[id].score
+                        totalScore: playerData[id].score,
+                        streak: playerData[id].streak 
                     });
                 }
             }
@@ -718,7 +707,6 @@
                 }
             });
 
-            // 保持下一題捷徑按鈕功能
             const isFinalRound = (currentIdx === quizData.length - 1);
             let nextBtnHtml = isFinalRound 
                 ? `<button class="btn-main" style="margin-top:0; padding:10px 30px; font-size:18px; background:var(--red);" onclick="showLeaderboard()">結束與排名 🏆</button>`
@@ -842,7 +830,6 @@
             myNickname = document.getElementById('pad-name-input').value.trim();
             if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
             
-            // 已恢復：連線中防重複點擊狀態
             const loginBtn = document.querySelector("#screen-pad-login .btn-main");
             const originalText = loginBtn.innerText;
             loginBtn.innerText = "⏳ 正在連線中...";
@@ -866,7 +853,6 @@
         }
 
         function handlePlayerReceivedData(data) {
-            // 已恢復：拒絕加入錯誤通知
             if (data.type === 'JOIN_FAIL') {
                 alert(data.reason);
                 const loginBtn = document.querySelector("#screen-pad-login .btn-main");
@@ -878,7 +864,6 @@
                 const loginBtn = document.querySelector("#screen-pad-login .btn-main");
                 if (loginBtn) { loginBtn.innerText = "進入遊戲"; loginBtn.disabled = false; }
                 
-                // 新增：顯示專屬玩家暱稱固定標籤
                 document.getElementById('display-player-name').innerText = myNickname;
                 document.getElementById('player-nickname-badge').style.display = 'block';
 
@@ -891,7 +876,6 @@
                 document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
                 document.getElementById('pad-header-title').innerText = data.qTitle;
 
-                // 已恢復：接收大螢幕傳來的選項文字並顯示在按鈕中
                 document.querySelectorAll('.pad-btn').forEach((b, index) => {
                     b.disabled = false;
                     const textSpan = b.querySelector('.pad-opt-text');
@@ -909,9 +893,10 @@
                 const resBg = data.isCorrect ? 'var(--green)' : 'var(--red)';
                 document.getElementById('screen-pad-result').style.backgroundColor = resBg;
                 
-                // 完全移除連續答對加分的相關文字，保持畫面乾淨
                 document.getElementById('pad-result-title').innerText = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
-                document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
+                
+                let streakText = (data.isCorrect && data.streak >= 2) ? `\n🔥 連續答對: ${data.streak} 題` : "";
+                document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}${streakText}`;
             }
             if (data.type === 'FINAL_結算') {
                 switchScreen('screen-pad-final');
