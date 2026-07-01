@@ -85,17 +85,27 @@
         .p-list-item.offline { opacity: 0.55; color: #777; }
 
         /* 大螢幕主台：題目區塊 (撐滿版面) */
-        #screen-host-quiz { height: 100vh; padding: 20px 40px; }
+        #screen-host-quiz { height: 100vh; padding: 20px 40px; justify-content: flex-start; }
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; flex-shrink: 0; }
-        .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; }
-        .question-text { font-size: 40px; font-weight: bold; margin-bottom: 20px; padding: 0 20px; text-align: center; width: 100%; max-width: 1400px; flex-shrink: 0; } 
+        .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 10px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; }
+        .question-text { font-size: 38px; font-weight: bold; margin-bottom: 15px; padding: 0 20px; text-align: center; width: 100%; max-width: 1400px; flex-shrink: 0; word-break: break-word; } 
         
-        /* 主台選項：盡可能放大填滿 */
-        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; gap: 20px; width: 100%; max-width: 1600px; flex-grow: 1; min-height: 40vh; margin: 0 auto; }
+        /* 中段複合控制區：核心防破版 */
+        .quiz-middle-zone { display: flex; flex-direction: column; width: 100%; max-width: 1600px; flex-grow: 1; gap: 20px; justify-content: center; align-items: center; min-height: 0; overflow: hidden; }
+
+        /* 主台基本答題狀態：選項放大填滿 */
+        #screen-host-quiz:not(.reveal-results) .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; gap: 20px; width: 100%; height: 100%; }
+        .chart-container { width: 100%; max-width: 800px; height: 100%; min-height: 0; margin: 0 auto; }
         .option-card { font-size: 36px; font-weight: bold; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); transition: 0.2s; text-align: center; width: 100%; height: 100%; padding: 20px; word-break: break-word; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 8px solid #fff; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 10; }
         
+        /* 👑 核心修復：解答畫面大螢幕改為左右並排，防止推擠標題 */
+        #screen-host-quiz.reveal-results .quiz-middle-zone { flex-direction: row; align-items: stretch; }
+        #screen-host-quiz.reveal-results .chart-container { flex: 1; width: 50%; max-width: 100%; display: block; }
+        #screen-host-quiz.reveal-results .options-grid { flex: 1; width: 50%; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr 1fr; gap: 15px; }
+        #screen-host-quiz.reveal-results .option-card { font-size: 26px; padding: 15px; gap: 15px; }
+
         .opt-0 { background-color: var(--red); } .opt-1 { background-color: var(--blue); }
         .opt-2 { background-color: var(--yellow); } .opt-3 { background-color: var(--green); }
         
@@ -105,16 +115,15 @@
         .shape-2 { border-radius: 6px; } 
         .shape-3 { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); width: 50px; height: 45px; background-color: white; }
         
-        .chart-container { width: 100%; max-width: 800px; flex-grow: 1; min-height: 350px; margin: 15px auto; }
         .leaderboard-list { width: 100%; max-width: 700px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 8px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: transform 0.2s; }
         .leaderboard-item.offline-player { opacity: 0.45; background: #e8e8e8; color: #777; box-shadow: none; border: 1px dashed #ccc; }
 
-        /* 手機玩家端樣式 (修復了 display:flex 導致的顯示異常) */
+        /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; flex-direction: column; height: 100dvh; justify-content: flex-start; }
         .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; flex-shrink: 0; } 
         
-        /* 手機選項：填滿空間，縮小字體以色塊辨識為主 */
+        /* 手機選項 */
         .pad-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; width: 100%; flex-grow: 1; margin-bottom: 10px; }
         .pad-btn { border: none; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: white; width: 100%; height: 100%; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: opacity 0.1s; }
         .pad-btn:active { opacity: 0.7; }
@@ -135,12 +144,18 @@
 
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
         @media(max-width: 768px) { 
-            .options-grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } 
+            #screen-host-quiz:not(.reveal-results) .options-grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); } 
             .option-card { font-size: 24px; padding: 15px; } 
             .pad-grid { gap: 10px; }
-            .persistent-lobby-info { display: none !important; } /* 手機端大螢幕隱藏右側避免破版 */
+            .persistent-lobby-info { display: none !important; } 
             body.host-mode { padding-right: 0; }
             .btn-player-join { font-size: 26px; padding: 20px 40px; }
+            
+            /* 如果在窄螢幕或手機開 Host 畫面，解答時切回上下排列 */
+            #screen-host-quiz.reveal-results .quiz-middle-zone { flex-direction: column; }
+            #screen-host-quiz.reveal-results .chart-container,
+            #screen-host-quiz.reveal-results .options-grid { width: 100%; flex: none; height: auto; }
+            #screen-host-quiz.reveal-results .options-grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
         }
     </style>
 </head>
@@ -193,13 +208,14 @@
         <div class="timer-circle" id="host-timer">20</div>
         <div class="question-text" id="host-question">題目載入中...</div>
         
-        <div class="chart-container" id="chart-panel" style="display: none;">
-            <canvas id="resultChart"></canvas>
+        <div class="quiz-middle-zone" id="quiz-middle-zone">
+            <div class="chart-container" id="chart-panel" style="display: none;">
+                <canvas id="resultChart"></canvas>
+            </div>
+            <div class="options-grid" id="host-options"></div>
         </div>
-
-        <div class="options-grid" id="host-options"></div>
         
-        <div style="margin-top:25px; font-size:18px; font-weight: bold; display: flex; gap:20px; align-items:center; flex-shrink: 0;" id="host-footer-btn-zone">
+        <div style="margin-top:20px; font-size:18px; font-weight: bold; display: flex; gap:20px; align-items:center; flex-shrink: 0; min-height: 50px;" id="host-footer-btn-zone">
             <span id="answer-counter" style="color:#666;">已答題人數: 0</span>
         </div>
     </div>
@@ -274,7 +290,6 @@
             }
         };
 
-        // 切換自訂秒數輸入框的顯示
         function toggleCustomTimeInput() {
             const select = document.getElementById('set-global-time');
             const customInput = document.getElementById('custom-time-input');
@@ -496,7 +511,6 @@
                     }
                     
                     document.getElementById('sub-questions-list').innerHTML = '';
-                    
                     importedQuestions.forEach(q => addQuestionInnerBlock(q));
                     alert(`📂 文字題組檔案載入完畢！共匯入 ${importedQuestions.length} 題。`);
                     
@@ -552,11 +566,9 @@
         let myNickname = '';
 
         function switchScreen(screenId) {
-            // 切換畫面
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
             
-            // 處理大螢幕主台特有的固定右側欄狀態
             const persistentPanel = document.getElementById('global-persistent-panel');
             if (role === 'host' && (screenId === 'screen-host-quiz' || screenId === 'screen-host-rank')) {
                 document.body.classList.add('host-mode');
@@ -737,11 +749,12 @@
             timeLeft = qItem.timeLimit;
             totalTimeAllocated = timeLeft === 0 ? 30 : timeLeft;
 
+            // 移除解答排版狀態類別
+            document.getElementById('screen-host-quiz').classList.remove('reveal-results');
             document.getElementById('chart-panel').style.display = 'none';
             document.getElementById('host-timer').style.display = 'flex';
             document.getElementById('host-quiz-progress').innerText = `題目 ${currentIdx + 1} / ${quizData.length}`;
             
-            // 讓 Host 不管有沒有倒數計時都可以強制結束答題
             let footerHtml = `<span id="answer-counter" style="color:#666;">已答題人數: 0</span>`;
             footerHtml += `<button class="btn-main" style="margin-top:0; margin-left:20px; background:var(--red); padding:8px 20px; font-size:16px;" onclick="endQuestion()">強制結束答題 ✕</button>`;
             
@@ -835,7 +848,9 @@
                 }
             }
 
+            // 啟動大螢幕解答排版樣式 (左右並排)
             document.getElementById('host-timer').style.display = 'none';
+            document.getElementById('screen-host-quiz').classList.add('reveal-results');
             document.getElementById('chart-panel').style.display = 'block';
             renderShapeChart(stats, voters);
 
@@ -1123,7 +1138,7 @@
                     streakDom.style.display = 'block';
                     
                     streakDom.style.animation = 'none';
-                    streakDom.offsetHeight; /* trigger reflow */
+                    streakDom.offsetHeight; 
                     streakDom.style.animation = 'pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                 } else {
                     streakDom.style.display = 'none';
