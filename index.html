@@ -864,4 +864,10 @@
         document.querySelector('.pad-grid').addEventListener('click', (e) => {
             let btn = e.target.closest('.pad-btn');
             if(!btn || btn.disabled) return;
-            document
+            document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
+            let optIdx = Array.from(document.querySelectorAll('.pad-btn')).indexOf(btn);
+            if (myConn) myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
+        });
+    </script>
+</body>
+</html>
