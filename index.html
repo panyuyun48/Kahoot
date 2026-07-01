@@ -79,11 +79,13 @@
         .p-list-item { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: bold; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
         .p-list-item.offline { opacity: 0.55; color: #777; }
 
+        /* 大螢幕主台：題目區塊 (支援長內容捲動) */
         #screen-host-quiz { padding: 20px 40px; justify-content: flex-start; overflow-y: auto; }
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; flex-shrink: 0; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 10px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; }
         .question-text { font-size: 38px; font-weight: bold; margin-bottom: 15px; padding: 0 20px; text-align: center; width: 100%; max-width: 1400px; flex-shrink: 0; word-break: break-word; } 
         
+        /* 中段複合區：允許內容正常往下延伸並捲動 */
         .quiz-middle-zone { display: flex; flex-direction: column; width: 100%; max-width: 1400px; flex-grow: 1; gap: 20px; justify-content: flex-start; align-items: center; padding-bottom: 20px; }
         .chart-container { width: 100%; max-width: 800px; height: 300px; min-height: 300px; margin: 0 auto; flex-shrink: 0; }
         
@@ -93,6 +95,7 @@
         .option-card.correct-highlight { border: 8px solid #fff; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 10; }
         .opt-text-val { flex: 1; min-width: 0; white-space: normal; text-align: left; }
         
+        /* 解答畫面大螢幕：維持上下配置，圖表在上，選項在下 */
         #screen-host-quiz.reveal-results .quiz-middle-zone { flex-direction: column; }
         #screen-host-quiz.reveal-results .options-grid { gap: 15px; }
         #screen-host-quiz.reveal-results .option-card { font-size: 26px; min-height: 80px; padding: 15px 25px; }
@@ -256,15 +259,16 @@
     </div>
 
     <script>
-        // 🚀 核心優化：還原最穩健的高可用 STUN 伺服器配置
+        // 🚀 核心優化：只在 config 屬性中設定伺服器，保留 PeerJS 預設的乾淨信號連線
+        // 並加入完整的 TURN TCP 支援，徹底穿透企業防火牆
         const webrtcConfig = {
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:global.stun.twilio.com:3478' },
+                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
                 ]
             }
         };
@@ -1055,13 +1059,15 @@
         /* =====================================================================
            玩家手機端邏輯 (Player)
            ===================================================================== */
+        let connTimeout;
+        
         function connectToHost() {
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
             if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
 
             const loginBtn = document.querySelector("#screen-pad-login .btn-main");
-            loginBtn.innerText = "⏳ 正在連線中...";
+            loginBtn.innerText = "⏳ 正在突破防火牆連線中...";
             loginBtn.disabled = true;
 
             role = 'player';
@@ -1072,10 +1078,19 @@
             peer = new Peer(webrtcConfig);
             
             peer.on('open', (id) => {
-                // 恢復單純且穩健的連線建立方法
-                myConn = peer.connect(ROOM_PREFIX + pin);
+                // 加入 reliable 保障封包不丟失
+                myConn = peer.connect(ROOM_PREFIX + pin, { reliable: true });
                 
+                // 延長至 15 秒逾時偵測：企業防火牆切換 TCP TURN 需要較長時間
+                clearTimeout(connTimeout);
+                connTimeout = setTimeout(() => {
+                    alert('連線逾時！\n這可能是因為公司網路啟用了極度嚴格的防火牆。\n請嘗試切換至手機 4G/5G 行動網路後再試。');
+                    loginBtn.innerText = "進入遊戲";
+                    loginBtn.disabled = false;
+                }, 15000);
+
                 myConn.on('open', () => {
+                    clearTimeout(connTimeout);
                     myConn.send({ type: 'JOIN', name: myNickname });
                 });
                 
@@ -1088,7 +1103,8 @@
 
             peer.on('error', (err) => {
                 console.error('Peer連線錯誤:', err);
-                alert('連線失敗！\n1. 請確認房間 ID 是否正確。\n2. 如果公司 Wi-Fi 阻擋連線，請嘗試切換至手機 4G/5G。');
+                clearTimeout(connTimeout);
+                alert('伺服器連線異常！\n請確認房間 ID 是否正確，或檢查您的網路連線狀態。');
                 loginBtn.innerText = "進入遊戲";
                 loginBtn.disabled = false;
             });
