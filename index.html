@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kahoot!!</title>
-    <!-- 引入 PeerJS、QRCode 與 Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -56,12 +55,12 @@
         .persistent-players-list { width: 100%; max-height: 150px; overflow-y: auto; margin-top: 5px; text-align: left; }
         .p-list-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
 
-        /* 題目大螢幕畫面 */
+        /* 題目大螢幕畫面 (置中排版修改) */
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 260px 0 20px; text-align: left; width: 100%; max-width: 1100px; } 
-        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; padding-right: 250px; }
-        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; text-align: center; width: 100%; max-width: 1100px; } 
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; margin: 0 auto; }
+        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: center; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
         
@@ -83,25 +82,25 @@
         .pad-screen { padding: 10px; background: #f5f5f5; justify-content: flex-start; }
         .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); }
         .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 160px); }
-        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: white; font-size: 18px; font-weight: bold; }
         .pad-btn:active { opacity: 0.7; }
+        .pad-opt-text { margin-top: 10px; word-break: break-word; text-align: center; font-size: 16px;}
+        
         .status-msg { font-size: 24px; font-weight: bold; color: #555; }
         .input-group { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
         @media(max-width: 768px) { 
-            .options-grid { grid-template-columns: 1fr; padding-right: 10px; } 
+            .options-grid { grid-template-columns: 1fr; } 
             .option-card { font-size: 18px; padding: 15px; } 
             .opt-row { grid-template-columns: 1fr; }
-            .question-text { padding: 0 20px; }
             .persistent-lobby-info { position: static; margin-bottom: 15px; width: 100%; max-width: 400px; } 
         }
     </style>
 </head>
 <body>
 
-    <!-- 全局主台常駐連線看板 (包含進行中全域玩家名單管理) -->
     <div id="global-persistent-panel" class="persistent-lobby-info">
         <div class="persistent-pin">房間 ID: <span id="persist-pin-text">----</span></div>
         <div id="persist-qrcode" class="persistent-qr"></div>
@@ -109,29 +108,26 @@
         <div class="persistent-players-list" id="persist-players-dom"></div>
     </div>
 
-    <!-- 1. 首頁：自訂題組架構 -->
     <div id="screen-welcome" class="screen active" style="background: linear-gradient(135deg, #46178f 0%, #250854 100%); color: white; justify-content: flex-start; overflow-y: auto; padding-top: 40px;">
         <h1>Kahoot!! FAKE</h1>
         <p style="margin: 10px 0 20px 0; opacity: 0.8;">您可以新增題組、或是直接匯入現有的題組 TXT 檔案！</p>
         
         <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-            <!-- 動態生成的題組編輯器會插在這裡 -->
-        </div>
+            </div>
 
         <input type="file" id="file-import-input" accept=".txt" style="display: none;" onchange="handleFileImport(event)">
 
         <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;" id="welcome-action-buttons">
             <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
-            <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組文字檔 (.txt)</button>
+            <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組</button>
+            <button id="btn-download-template" class="btn-main" style="background:#8e44ad;" onclick="downloadTemplate()">📄 下載題組模板</button>
             <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組 (.txt)</button>
             <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
-            <button id="btn-editor-back" class="btn-main" style="background:#666; display:none;" onclick="location.reload()">↩ 返回首頁</button>
-        </div>
+            </div>
         <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;" id="welcome-divider">
         <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
     </div>
 
-    <!-- 2. 主台：等待玩家加入 -->
     <div id="screen-host-lobby" class="screen">
         <h2>📢 玩家加入中...</h2>
         <div id="qrcode"></div>
@@ -141,7 +137,6 @@
         <button id="btn-start-game" class="btn-main" style="display:none;" onclick="startQuiz()">開始遊戲</button>
     </div>
 
-    <!-- 3. 主台：題目與選項顯示 -->
     <div id="screen-host-quiz" class="screen">
         <div class="quiz-progress-text" id="host-quiz-progress">題目 0 / 0</div>
         <div class="timer-circle" id="host-timer">20</div>
@@ -157,14 +152,12 @@
         </div>
     </div>
 
-    <!-- 4. 主台：排行榜 -->
     <div id="screen-host-rank" class="screen">
         <h2 id="rank-title">目前積分榜</h2>
         <div class="leaderboard-list" id="leaderboard-dom"></div>
         <button class="btn-main" id="btn-next" onclick="nextQuestion()">下一題 ❯</button>
     </div>
 
-    <!-- ================= 玩家手機端畫面 ================= -->
     <div id="screen-pad-login" class="screen" style="background: var(--purple);">
         <div class="input-group">
             <h3 style="color:var(--purple); text-align:center;">加入 Kahoot 遊戲</h3>
@@ -179,17 +172,24 @@
         <div class="status-msg" style="color:white;" id="pad-wait-msg">成功加入！請看大螢幕等待開賽...</div>
     </div>
 
-    <!-- 玩家端：搶答操作介面 -->
     <div id="screen-pad-game" class="screen pad-screen">
         <div class="pad-quiz-header">
             <div id="pad-header-index" style="font-size:14px; font-weight:bold; color:var(--purple);">題目 - / -</div>
             <div id="pad-header-title" style="font-size:18px; font-weight:bold; color:#1a1a1a; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">題目名稱載入中...</div>
         </div>
         <div class="pad-grid">
-            <button class="pad-btn opt-0"><span class="option-shape shape-0"></span></button>
-            <button class="pad-btn opt-1"><span class="option-shape shape-1"></span></button>
-            <button class="pad-btn opt-2"><span class="option-shape shape-2"></span></button>
-            <button class="pad-btn opt-3"><span class="option-shape shape-3"></span></button>
+            <button class="pad-btn opt-0">
+                <span class="option-shape shape-0"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-1">
+                <span class="option-shape shape-1"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-2">
+                <span class="option-shape shape-2"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-3">
+                <span class="option-shape shape-3"></span><span class="pad-opt-text"></span>
+            </button>
         </div>
     </div>
 
@@ -238,14 +238,17 @@
             `;
             localQuestionsCount = 0;
             addQuestionInnerBlock(); 
+            
+            // 隱藏原本首頁功能按鈕
             document.getElementById('btn-add-set').style.display = 'none';
             document.getElementById('btn-import-set').style.display = 'none';
+            document.getElementById('btn-download-template').style.display = 'none';
             document.getElementById('btn-manual-join').style.display = 'none';
             document.getElementById('welcome-divider').style.display = 'none';
             
             document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
-            document.getElementById('btn-editor-back').style.display = 'inline-block';
+            // 不再顯示「返回首頁按鈕」以符合新需求
         }
 
         function addQuestionInnerBlock(prefill = null) {
@@ -279,22 +282,34 @@
             localQuestionsCount++;
         }
 
-        /* 產生可讀性高、易於編輯的純文字檔 (.txt) 格式 */
+        /* 提供給使用者的固定題組模板 */
+        function downloadTemplate() {
+            const templateText = `答題時間\n20\n\nQ1\n題目描述1\n選項A\n選項B VVV\n選項C\n選項D\n\nQ2\n題目描述2\n選項A\n選項B\n選項C\n選項D VVV\n\nQ3\n題目描述3\n選項A VVV\n選項B\n選項C\n選項D\n`;
+            const blob = new Blob([templateText], { type: "text/plain;charset=utf-8" });
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = URL.createObjectURL(blob);
+            downloadAnchor.setAttribute("download", `Template.txt`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        /* 依據新模板輸出包含 VVV 的匯出檔案 */
         function exportQuizSetToFile() {
             compileAllInputs();
             if(quizData.length === 0) { alert('請確認題目與四個選項皆有完整填寫！'); return; }
             
-            let txtOutput = `# 答題時間\n${globalTimeLimit}\n\n`;
+            let txtOutput = `答題時間\n${globalTimeLimit}\n\n`;
             
             quizData.forEach((q, idx) => {
-                const ansLetter = ['A', 'B', 'C', 'D'][q.ans];
-                txtOutput += `# 題目 ${idx + 1}\n`;
+                txtOutput += `Q${idx + 1}\n`;
                 txtOutput += `${q.q}\n`;
-                txtOutput += `A) ${q.opts[0]}\n`;
-                txtOutput += `B) ${q.opts[1]}\n`;
-                txtOutput += `C) ${q.opts[2]}\n`;
-                txtOutput += `D) ${q.opts[3]}\n`;
-                txtOutput += `🎯 正確答案: ${ansLetter}\n\n`;
+                
+                q.opts.forEach((optText, oIdx) => {
+                    let isAns = (oIdx === q.ans) ? " VVV" : "";
+                    txtOutput += `${optText}${isAns}\n`;
+                });
+                txtOutput += `\n`;
             });
             
             const blob = new Blob([txtOutput], { type: "text/plain;charset=utf-8" });
@@ -306,7 +321,7 @@
             downloadAnchor.remove();
         }
 
-        /* 解析自訂的直覺文字格式 (.txt) 匯入編輯器中 */
+        /* 解析符合新模板 (包含 VVV 與 Q 題號) 的格式 */
         function handleFileImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -314,51 +329,45 @@
             reader.onload = function(e) {
                 try {
                     const text = e.target.result;
-                    const lines = text.split('\n').map(line => line.trim());
+                    const lines = text.split('\n');
                     
                     let importedTimeLimit = 20;
                     let importedQuestions = [];
                     
-                    let currentQ = null;
-                    
                     for (let i = 0; i < lines.length; i++) {
-                        let line = lines[i];
+                        let line = lines[i].trim();
                         if (!line) continue;
                         
-                        if (line.startsWith('# 答題時間')) {
-                            if (i + 1 < lines.length && !isNaN(lines[i + 1])) {
-                                importedTimeLimit = parseInt(lines[i + 1]);
+                        // 匹配「答題時間」
+                        if (line.includes('答題時間')) {
+                            if (i + 1 < lines.length && !isNaN(parseInt(lines[i + 1].trim()))) {
+                                importedTimeLimit = parseInt(lines[i + 1].trim());
                                 i++;
                             }
                             continue;
                         }
                         
-                        if (line.startsWith('# 題目')) {
-                            currentQ = { q: '', opts: [], ans: 0 };
+                        // 匹配 Q1, Q2 格式
+                        if (line.match(/^Q\d+/i)) {
+                            let currentQ = { q: '', opts: [], ans: 0 };
+                            
+                            // 讀取下一行為題目敘述
                             if (i + 1 < lines.length) {
-                                currentQ.q = lines[i + 1];
+                                currentQ.q = lines[i + 1].trim();
                                 i++;
                             }
                             
-                            while (i + 1 < lines.length) {
-                                let nextLine = lines[i + 1].trim();
-                                if (!nextLine || nextLine.startsWith('#')) break;
-                                
-                                i++;
-                                if (nextLine.toUpperCase().startsWith('A)')) {
-                                    currentQ.opts[0] = nextLine.substring(2).trim();
-                                } else if (nextLine.toUpperCase().startsWith('B)')) {
-                                    currentQ.opts[1] = nextLine.substring(2).trim();
-                                } else if (nextLine.toUpperCase().startsWith('C)')) {
-                                    currentQ.opts[2] = nextLine.substring(2).trim();
-                                } else if (nextLine.toUpperCase().startsWith('D)')) {
-                                    currentQ.opts[3] = nextLine.substring(2).trim();
-                                } else if (nextLine.includes('正確答案:')) {
-                                    let ansPart = nextLine.split('正確答案:')[1].trim().toUpperCase();
-                                    if (ansPart.includes('A')) currentQ.ans = 0;
-                                    else if (ansPart.includes('B')) currentQ.ans = 1;
-                                    else if (ansPart.includes('C')) currentQ.ans = 2;
-                                    else if (ansPart.includes('D')) currentQ.ans = 3;
+                            // 接下來連續四行為選項，若有 VVV 則為正解
+                            for (let j = 0; j < 4; j++) {
+                                if (i + 1 < lines.length) {
+                                    i++;
+                                    let optLine = lines[i].trim();
+                                    if (optLine.endsWith('VVV')) {
+                                        currentQ.ans = j;
+                                        // 移除結尾的 VVV 及其前面的空格
+                                        optLine = optLine.replace(/\s*V+$/i, '').trim(); 
+                                    }
+                                    currentQ.opts.push(optLine);
                                 }
                             }
                             
@@ -496,7 +505,8 @@
                         type: 'START_QUESTION',
                         qIdx: currentIdx + 1,
                         qTotal: quizData.length,
-                        qTitle: qItem.q
+                        qTitle: qItem.q,
+                        qOpts: qItem.opts // 新增選項文字發送至 Player
                     });
                 }
             }
@@ -511,11 +521,10 @@
             }
         }
 
-        /* 踢除玩家（Kick）核心處理函數 */
         function kickPlayer(peerId) {
             const conn = connMap.get(peerId);
             if (conn) {
-                conn.send({ type: 'KICKED' }); // 傳送踢除訊息通知玩家端
+                conn.send({ type: 'KICKED' }); 
                 setTimeout(() => {
                     conn.close();
                     removePlayerFromState(peerId);
@@ -539,15 +548,11 @@
             }
         }
 
-        /* 統一更新：等待大廳 與 全局常駐看板 的玩家清單與踢除功能 */
         function updatePlayerListsUI() {
             let count = 0;
-            
-            // 1. 更新等待大廳畫面 (Lobby)
             const lobbyDom = document.getElementById('lobby-players');
             if (lobbyDom) lobbyDom.innerHTML = '';
             
-            // 2. 更新右側常駐面板清單 (Persistent View)
             const persistDom = document.getElementById('persist-players-dom');
             if (persistDom) persistDom.innerHTML = '';
 
@@ -555,7 +560,6 @@
                 count++;
                 let pName = playerData[id].name;
 
-                // 渲染大廳 Badge
                 if (lobbyDom) {
                     let badge = document.createElement('div');
                     badge.className = 'player-badge';
@@ -563,7 +567,6 @@
                     lobbyDom.appendChild(badge);
                 }
 
-                // 渲染常駐管理面板清單項目
                 if (persistDom) {
                     let pRow = document.createElement('div');
                     pRow.className = 'p-list-item';
@@ -613,11 +616,13 @@
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
 
+            // 發送廣播時包含選項陣列
             broadcast({ 
                 type: 'START_QUESTION', 
                 qIdx: currentIdx + 1, 
                 qTotal: quizData.length,
-                qTitle: qItem.q 
+                qTitle: qItem.q,
+                qOpts: qItem.opts 
             });
             questionStartTime = Date.now();
             
@@ -824,7 +829,14 @@
                 document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
                 document.getElementById('pad-header-title').innerText = data.qTitle;
 
-                document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
+                // 啟動所有按鈕，並填入文字選項
+                document.querySelectorAll('.pad-btn').forEach((b, index) => {
+                    b.disabled = false;
+                    const textSpan = b.querySelector('.pad-opt-text');
+                    if (textSpan && data.qOpts && data.qOpts[index]) {
+                        textSpan.innerText = data.qOpts[index];
+                    }
+                });
             }
             if (data.type === 'ANSWER_ACK') {
                 switchScreen('screen-pad-wait');
@@ -845,17 +857,11 @@
             }
             if (data.type === 'KICKED') {
                 alert('您已被房長移出房間。');
-                location.reload(); // 被踢除後自動刷新回首頁
+                location.reload();
             }
         }
 
         document.querySelector('.pad-grid').addEventListener('click', (e) => {
             let btn = e.target.closest('.pad-btn');
             if(!btn || btn.disabled) return;
-            document.querySelectorAll('.pad-btn').forEach(b => b.disabled = true);
-            let optIdx = Array.from(document.querySelectorAll('.pad-btn')).indexOf(btn);
-            if (myConn) myConn.send({ type: 'SUBMIT_ANSWER', optIdx: optIdx });
-        });
-    </script>
-</body>
-</html>
+            document
