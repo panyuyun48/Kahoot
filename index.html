@@ -37,6 +37,10 @@
         
         .player-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
         .player-badge { background: white; padding: 8px 18px; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid var(--purple); display: flex; align-items: center; gap: 10px; animation: pop 0.3s ease; }
+        
+        /* 離線玩家徽章樣式 */
+        .player-badge.offline { opacity: 0.55; background: #e0e0e0; border-color: #999; color: #555; }
+        
         .btn-kick { background: rgba(226, 27, 60, 0.1); color: var(--red); border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-weight: bold; }
         .btn-kick:hover { background: var(--red); color: white; }
 
@@ -55,6 +59,7 @@
         .persistent-players-header { font-size: 13px; font-weight: bold; color: #555; width: 100%; text-align: left; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 4px; }
         .persistent-players-list { width: 100%; max-height: 150px; overflow-y: auto; margin-top: 5px; text-align: left; }
         .p-list-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+        .p-list-item.offline { opacity: 0.55; color: #777; }
 
         /* 題目大螢幕畫面 */
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
@@ -79,6 +84,9 @@
         .leaderboard-list { width: 100%; max-width: 600px; margin: 20px 0; }
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 6px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
+        /* 排行榜離線玩家置底淡化 */
+        .leaderboard-item.offline-player { opacity: 0.45; background: #e8e8e8; color: #777; box-shadow: none; border: 1px dashed #ccc; }
+
         /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; justify-content: flex-start; }
         .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; } 
@@ -116,7 +124,7 @@
     <div id="global-persistent-panel" class="persistent-lobby-info">
         <div class="persistent-pin">房間 ID: <span id="persist-pin-text">----</span></div>
         <div id="persist-qrcode" class="persistent-qr"></div>
-        <div class="persistent-players-header">線上玩家名單 (<span id="persist-count">0</span>)：</div>
+        <div class="persistent-players-header">線上玩家 (<span id="persist-count">0</span>)：</div>
         <div class="persistent-players-list" id="persist-players-dom"></div>
     </div>
 
@@ -146,7 +154,7 @@
         <h2>📢 玩家加入中...</h2>
         <div id="qrcode"></div>
         <div class="pin-display">房間 ID: <span id="room-pin-text">---</span></div>
-        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">已加入的玩家 (<span id="player-count">0</span>):</div>
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">目前狀態名單 (在線: <span id="player-count">0</span>):</div>
         <div class="player-list" id="lobby-players"></div>
         <button id="btn-start-game" class="btn-main" style="display:none;" onclick="startQuiz()">開始遊戲</button>
     </div>
@@ -208,8 +216,13 @@
     </div>
 
     <div id="screen-pad-result" class="screen" style="color:white;">
-        <h1 id="pad-result-title">已送出答案</h1>
-        <p style="font-size:20px; margin-top:15px; white-space: pre-line;" id="pad-result-score">+0 分</p>
+        <h1 id="pad-result-title" style="font-size: 32px;">已送出答案</h1>
+        
+        <div id="pad-result-streak" style="font-size: 36px; font-weight: bold; color: #ffeb3b; margin-top: 15px; text-shadow: 0 4px 10px rgba(0,0,0,0.3); display: none; animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            🔥 連續答對 - 題！ 🔥
+        </div>
+
+        <p style="font-size:22px; margin-top:20px; white-space: pre-line; background: rgba(0,0,0,0.2); padding: 15px 30px; border-radius: 12px;" id="pad-result-score">+0 分</p>
     </div>
 
     <div id="screen-pad-final" class="screen" style="background: linear-gradient(135deg, #110326 0%, #46178f 100%); color:white;">
@@ -528,6 +541,7 @@
             }
         }
 
+        // 修改點 1：對線上玩家踢除時，不再刪除 playerData，僅斷開連線以保留歷史紀錄
         function kickPlayer(peerId) {
             const conn = connMap.get(peerId);
             if (conn) {
@@ -536,11 +550,18 @@
                     conn.close();
                     removePlayerFromState(peerId);
                 }, 100);
-            } else {
-                removePlayerFromState(peerId);
             }
         }
 
+        // 修改點 2：針對「已經離線」的玩家，提供真正刪除紀錄的選項
+        function deletePlayerRecord(peerId) {
+            if (confirm('確定要徹底清除這位離線玩家的紀錄嗎？\n清除後若同名加入將會重新計算積分。')) {
+                delete playerData[peerId];
+                updatePlayerListsUI();
+            }
+        }
+
+        // 僅移除當前連線狀態與作答等待區（保留歷史資料）
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
             if (roundAnswers[peerId]) delete roundAnswers[peerId];
@@ -563,21 +584,37 @@
             if (persistDom) persistDom.innerHTML = '';
 
             for (let id in playerData) {
-                if (connMap.has(id)) {
-                    activeCount++;
-                    let pName = playerData[id].name;
+                let isOnline = connMap.has(id);
+                let pName = playerData[id].name;
 
+                if (isOnline) {
+                    activeCount++;
                     if (lobbyDom) {
                         let badge = document.createElement('div');
                         badge.className = 'player-badge';
-                        badge.innerHTML = `<span>${pName}</span><button class="btn-kick" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
+                        // 在線玩家，點擊踢除僅斷線不刪資料
+                        badge.innerHTML = `<span>${pName}</span><button class="btn-kick" onclick="kickPlayer('${id}')" title="踢出遊戲 (保留積分)">✕</button>`;
                         lobbyDom.appendChild(badge);
                     }
-
                     if (persistDom) {
                         let pRow = document.createElement('div');
                         pRow.className = 'p-list-item';
-                        pRow.innerHTML = `<span>${pName}</span><button class="btn-kick" style="width:20px; height:20px; font-size:11px;" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
+                        pRow.innerHTML = `<span>${pName}</span><button class="btn-kick" style="width:20px; height:20px; font-size:11px;" onclick="kickPlayer('${id}')" title="踢出遊戲 (保留積分)">✕</button>`;
+                        persistDom.appendChild(pRow);
+                    }
+                } else {
+                    // 顯示離線狀態的玩家
+                    if (lobbyDom) {
+                        let badge = document.createElement('div');
+                        badge.className = 'player-badge offline';
+                        // 離線玩家，點擊✕則執行徹底刪除紀錄
+                        badge.innerHTML = `<span>${pName} (離線)</span><button class="btn-kick" onclick="deletePlayerRecord('${id}')" title="徹底刪除此紀錄">✕</button>`;
+                        lobbyDom.appendChild(badge);
+                    }
+                    if (persistDom) {
+                        let pRow = document.createElement('div');
+                        pRow.className = 'p-list-item offline';
+                        pRow.innerHTML = `<span>${pName} (離線)</span><button class="btn-kick" style="width:20px; height:20px; font-size:11px;" onclick="deletePlayerRecord('${id}')" title="徹底刪除此紀錄">✕</button>`;
                         persistDom.appendChild(pRow);
                     }
                 }
@@ -776,11 +813,26 @@
 
         function showLeaderboard() {
             switchScreen('screen-host-rank');
-            let sorted = Object.keys(playerData).map(id => ({
-                id: id,
-                name: playerData[id].name,
-                score: playerData[id].score
-            })).sort((a,b) => b.score - a.score);
+            
+            let activePlayers = [];
+            let offlinePlayers = [];
+
+            for (let id in playerData) {
+                let p = {
+                    id: id,
+                    name: playerData[id].name,
+                    score: playerData[id].score,
+                    isOnline: connMap.has(id)
+                };
+                if (p.isOnline) {
+                    activePlayers.push(p);
+                } else {
+                    offlinePlayers.push(p);
+                }
+            }
+
+            activePlayers.sort((a,b) => b.score - a.score);
+            offlinePlayers.sort((a,b) => b.score - a.score);
 
             const isFinalRound = (currentIdx === quizData.length - 1);
 
@@ -788,7 +840,7 @@
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 document.getElementById('btn-next').innerText = "回首頁 ↺";
                 
-                sorted.forEach((p, idx) => {
+                activePlayers.forEach((p, idx) => {
                     let pConn = connMap.get(p.id);
                     if (pConn) {
                         pConn.send({ type: 'FINAL_結算', finalRank: idx + 1, finalScore: p.score });
@@ -800,7 +852,8 @@
             }
 
             let rankHtml = '';
-            sorted.forEach((p, idx) => {
+            
+            activePlayers.forEach((p, idx) => {
                 let crown = idx === 0 ? '👑 ' : '';
                 rankHtml += `
                     <div class="leaderboard-item">
@@ -808,6 +861,15 @@
                         <span>${p.score} pts</span>
                     </div>`;
             });
+
+            offlinePlayers.forEach(p => {
+                rankHtml += `
+                    <div class="leaderboard-item offline-player">
+                        <span>(已離線) ${p.name}</span>
+                        <span>${p.score} pts</span>
+                    </div>`;
+            });
+
             document.getElementById('leaderboard-dom').innerHTML = rankHtml;
         }
 
@@ -895,8 +957,19 @@
                 
                 document.getElementById('pad-result-title').innerText = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
                 
-                let streakText = (data.isCorrect && data.streak >= 2) ? `\n🔥 連續答對: ${data.streak} 題` : "";
-                document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}${streakText}`;
+                const streakDom = document.getElementById('pad-result-streak');
+                if (data.isCorrect && data.streak >= 2) {
+                    streakDom.innerText = `🔥 連續答對 ${data.streak} 題！ 🔥`;
+                    streakDom.style.display = 'block';
+                    
+                    streakDom.style.animation = 'none';
+                    streakDom.offsetHeight; /* trigger reflow */
+                    streakDom.style.animation = 'pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                } else {
+                    streakDom.style.display = 'none';
+                }
+
+                document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
             }
             if (data.type === 'FINAL_結算') {
                 switchScreen('screen-pad-final');
