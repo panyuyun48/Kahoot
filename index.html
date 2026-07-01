@@ -20,6 +20,7 @@
         
         .btn-main { background-color: var(--purple); color: white; border: none; padding: 12px 35px; font-size: 20px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
         .btn-main:hover { transform: scale(1.03); background-color: #361071; }
+        .btn-main:disabled { background-color: #aaa; cursor: not-allowed; transform: none; }
         
         /* 題組與編輯器樣式 */
         .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); position: relative; }
@@ -58,9 +59,9 @@
         /* 題目大螢幕畫面 */
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 260px 0 20px; text-align: left; width: 100%; max-width: 1100px; } 
-        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; padding-right: 250px; }
-        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: left; }
+        .question-text { font-size: 36px; font-weight: bold; margin-bottom: 30px; padding: 0 20px; text-align: center; width: 100%; max-width: 1100px; } 
+        .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 1100px; padding: 10px; margin: 0 auto; }
+        .option-card { padding: 25px; font-size: 24px; font-weight: bold; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.2s; text-align: center; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 5px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.4); z-index: 10; }
         
@@ -80,25 +81,37 @@
         
         /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; justify-content: flex-start; }
-        .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); }
+        .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 10px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; } /* 加大 margin-top 給固定暱稱空間 */
         .pad-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; height: calc(100vh - 160px); }
-        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pad-btn { border: none; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: white; font-size: 18px; font-weight: bold; }
         .pad-btn:active { opacity: 0.7; }
-        .status-msg { font-size: 24px; font-weight: bold; color: #555; }
+        .pad-opt-text { margin-top: 10px; word-break: break-word; text-align: center; font-size: 16px;}
+        
+        .status-msg { font-size: 24px; font-weight: bold; color: #555; white-space: pre-line; line-height: 1.4; }
         .input-group { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
+        /* 玩家個人暱稱固定顯示標籤 */
+        #player-nickname-badge {
+            display: none; position: fixed; top: 10px; left: 10px; 
+            background: rgba(0,0,0,0.6); color: white; 
+            padding: 6px 14px; border-radius: 20px; 
+            font-size: 14px; font-weight: bold; z-index: 9999;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
         @keyframes pop { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
         @media(max-width: 768px) { 
-            .options-grid { grid-template-columns: 1fr; padding-right: 10px; } 
+            .options-grid { grid-template-columns: 1fr; } 
             .option-card { font-size: 18px; padding: 15px; } 
             .opt-row { grid-template-columns: 1fr; }
-            .question-text { padding: 0 20px; }
             .persistent-lobby-info { position: static; margin-bottom: 15px; width: 100%; max-width: 400px; } 
         }
     </style>
 </head>
 <body>
+
+    <div id="player-nickname-badge">👤 <span id="display-player-name"></span></div>
 
     <div id="global-persistent-panel" class="persistent-lobby-info">
         <div class="persistent-pin">房間 ID: <span id="persist-pin-text">----</span></div>
@@ -119,13 +132,14 @@
         <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;" id="welcome-action-buttons">
             <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
             <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組文字檔 (.txt)</button>
+            <button id="btn-download-template" class="btn-main" style="background:#8e44ad;" onclick="downloadTemplate()">📄 下載題組模板</button>
             
             <button id="btn-editor-back" class="btn-main" style="background:#666; display:none;" onclick="location.reload()">✕ 關閉返回</button>
             <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組 (.txt)</button>
             <button id="btn-host-start" class="btn-main" style="display:none;" onclick="initHost()">開啟大螢幕主台 (Host)</button>
         </div>
         <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;" id="welcome-divider">
-        <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">手動加入玩家 (Player)</button>
+        <button id="btn-manual-join" class="btn-main" style="background:#0085ff; margin-top:10px;" onclick="switchScreen('screen-pad-login')">玩家 (Player)</button>
     </div>
 
     <div id="screen-host-lobby" class="screen">
@@ -178,10 +192,18 @@
             <div id="pad-header-title" style="font-size:18px; font-weight:bold; color:#1a1a1a; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">題目名稱載入中...</div>
         </div>
         <div class="pad-grid">
-            <button class="pad-btn opt-0"><span class="option-shape shape-0"></span></button>
-            <button class="pad-btn opt-1"><span class="option-shape shape-1"></span></button>
-            <button class="pad-btn opt-2"><span class="option-shape shape-2"></span></button>
-            <button class="pad-btn opt-3"><span class="option-shape shape-3"></span></button>
+            <button class="pad-btn opt-0">
+                <span class="option-shape shape-0"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-1">
+                <span class="option-shape shape-1"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-2">
+                <span class="option-shape shape-2"></span><span class="pad-opt-text"></span>
+            </button>
+            <button class="pad-btn opt-3">
+                <span class="option-shape shape-3"></span><span class="pad-opt-text"></span>
+            </button>
         </div>
     </div>
 
@@ -229,11 +251,15 @@
             `;
             localQuestionsCount = 0;
             addQuestionInnerBlock(); 
+            
+            // 隱藏原本主畫面的按鈕
             document.getElementById('btn-add-set').style.display = 'none';
             document.getElementById('btn-import-set').style.display = 'none';
+            document.getElementById('btn-download-template').style.display = 'none';
             document.getElementById('btn-manual-join').style.display = 'none';
             document.getElementById('welcome-divider').style.display = 'none';
             
+            // 顯示題組編輯模式專屬的按鈕
             document.getElementById('btn-editor-back').style.display = 'inline-block';
             document.getElementById('btn-export-set').style.display = 'inline-block';
             document.getElementById('btn-host-start').style.display = 'inline-block';
@@ -268,6 +294,18 @@
             `;
             listContainer.appendChild(block);
             localQuestionsCount++;
+        }
+
+        /* 下載純文字題組模板 (已恢復並更新為最新版格式) */
+        function downloadTemplate() {
+            const templateText = `答題時間\n20\n\n1\n這是一道範例題目\n\n選項A\n選項B VVV\n選項C\n選項D\n\n2\n這是第二道範例題目\n\n選項A\n選項B\n選項C\n選項D VVV\n`;
+            const blob = new Blob([templateText], { type: "text/plain;charset=utf-8" });
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = URL.createObjectURL(blob);
+            downloadAnchor.setAttribute("download", `Template.txt`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
         }
 
         /* 產生完全符合附件格式的純文字檔 */
@@ -446,8 +484,6 @@
 
         function handleHostReceivedData(conn, data) {
             if (data.type === 'JOIN') {
-                connMap.set(conn.peer, conn);
-                
                 let existingKey = null;
                 for (let key in playerData) {
                     if (playerData[key].name === data.name) {
@@ -457,6 +493,13 @@
                 }
 
                 if (existingKey) {
+                    // 已恢復：重複 ID 阻擋邏輯
+                    if (connMap.has(existingKey)) {
+                        conn.send({ type: 'JOIN_FAIL', reason: '❌ 此暱稱已在遊戲中，請更換其他暱稱！' });
+                        return;
+                    }
+                    
+                    // 已恢復：斷線重連繼承分數邏輯
                     playerData[conn.peer] = playerData[existingKey];
                     if (existingKey !== conn.peer) {
                         delete playerData[existingKey];
@@ -466,9 +509,10 @@
                         }
                     }
                 } else {
-                    playerData[conn.peer] = { name: data.name, score: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
+                    playerData[conn.peer] = { name: data.name, score: 0, streak: 0, lastAnswerCorrect: false, lastScoreGained: 0 };
                 }
 
+                connMap.set(conn.peer, conn);
                 updatePlayerListsUI();
                 conn.send({ type: 'JOIN_ACK', success: true });
                 
@@ -478,7 +522,8 @@
                         type: 'START_QUESTION',
                         qIdx: currentIdx + 1,
                         qTotal: quizData.length,
-                        qTitle: qItem.q
+                        qTitle: qItem.q,
+                        qOpts: qItem.opts // 新增：傳遞選項內容
                     });
                 }
             }
@@ -493,11 +538,10 @@
             }
         }
 
-        /* 踢除玩家（Kick）核心處理函數 */
         function kickPlayer(peerId) {
             const conn = connMap.get(peerId);
             if (conn) {
-                conn.send({ type: 'KICKED' }); // 傳送踢除訊息通知玩家端
+                conn.send({ type: 'KICKED' }); 
                 setTimeout(() => {
                     conn.close();
                     removePlayerFromState(peerId);
@@ -509,7 +553,7 @@
 
         function removePlayerFromState(peerId) {
             connMap.delete(peerId);
-            delete playerData[peerId];
+            // 斷線時不刪除 playerData，保留紀錄以便後續同 ID 玩家重連
             if (roundAnswers[peerId]) delete roundAnswers[peerId];
             
             updatePlayerListsUI();
@@ -521,42 +565,38 @@
             }
         }
 
-        /* 統一更新：等待大廳 與 全局常駐看板 的玩家清單與踢除功能 */
         function updatePlayerListsUI() {
-            let count = 0;
-            
-            // 1. 更新等待大廳畫面 (Lobby)
+            let activeCount = 0;
             const lobbyDom = document.getElementById('lobby-players');
             if (lobbyDom) lobbyDom.innerHTML = '';
             
-            // 2. 更新右側常駐面板清單 (Persistent View)
             const persistDom = document.getElementById('persist-players-dom');
             if (persistDom) persistDom.innerHTML = '';
 
             for (let id in playerData) {
-                count++;
-                let pName = playerData[id].name;
+                if (connMap.has(id)) {
+                    activeCount++;
+                    let pName = playerData[id].name;
 
-                // 渲染大廳 Badge
-                if (lobbyDom) {
-                    let badge = document.createElement('div');
-                    badge.className = 'player-badge';
-                    badge.innerHTML = `<span>${pName}</span><button class="btn-kick" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
-                    lobbyDom.appendChild(badge);
-                }
+                    if (lobbyDom) {
+                        let badge = document.createElement('div');
+                        badge.className = 'player-badge';
+                        badge.innerHTML = `<span>${pName}</span><button class="btn-kick" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
+                        lobbyDom.appendChild(badge);
+                    }
 
-                // 渲染常駐管理面板清單項目
-                if (persistDom) {
-                    let pRow = document.createElement('div');
-                    pRow.className = 'p-list-item';
-                    pRow.innerHTML = `<span>${pName}</span><button class="btn-kick" style="width:20px; height:20px; font-size:11px;" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
-                    persistDom.appendChild(pRow);
+                    if (persistDom) {
+                        let pRow = document.createElement('div');
+                        pRow.className = 'p-list-item';
+                        pRow.innerHTML = `<span>${pName}</span><button class="btn-kick" style="width:20px; height:20px; font-size:11px;" onclick="kickPlayer('${id}')" title="踢除玩家">✕</button>`;
+                        persistDom.appendChild(pRow);
+                    }
                 }
             }
 
-            document.getElementById('player-count').innerText = count;
-            document.getElementById('persist-count').innerText = count;
-            document.getElementById('btn-start-game').style.display = count > 0 ? 'inline-block' : 'none';
+            document.getElementById('player-count').innerText = activeCount;
+            document.getElementById('persist-count').innerText = activeCount;
+            document.getElementById('btn-start-game').style.display = activeCount > 0 ? 'inline-block' : 'none';
         }
 
         function startQuiz() { currentIdx = 0; showQuestion(); }
@@ -595,11 +635,13 @@
             });
             document.getElementById('host-options').innerHTML = optionsHtml;
 
+            // 已恢復：將選項 (qOpts) 一併傳送給玩家
             broadcast({ 
                 type: 'START_QUESTION', 
                 qIdx: currentIdx + 1, 
                 qTotal: quizData.length,
-                qTitle: qItem.q 
+                qTitle: qItem.q,
+                qOpts: qItem.opts 
             });
             questionStartTime = Date.now();
             
@@ -628,15 +670,25 @@
                     voters[pAnswer.optIndex].push(pName); 
                     if (pAnswer.optIndex === qItem.ans) {
                         let t = Math.min(pAnswer.timeTaken, totalTimeAllocated);
-                        let scoreGained = Math.round((1 - ((t / totalTimeAllocated) * 0.5)) * 1000);
+                        let baseScore = Math.round((1 - ((t / totalTimeAllocated) * 0.5)) * 1000);
+                        
+                        playerData[id].streak = (playerData[id].streak || 0) + 1;
+                        let streakBonus = 0;
+                        if (playerData[id].streak >= 2) {
+                            streakBonus = Math.min((playerData[id].streak - 1) * 100, 500);
+                        }
+                        let scoreGained = baseScore + streakBonus;
+
                         playerData[id].score += scoreGained;
                         playerData[id].lastScoreGained = scoreGained;
                         playerData[id].lastAnswerCorrect = true;
                     } else {
+                        playerData[id].streak = 0; 
                         playerData[id].lastScoreGained = 0;
                         playerData[id].lastAnswerCorrect = false;
                     }
                 } else {
+                    playerData[id].streak = 0; 
                     playerData[id].lastScoreGained = 0;
                     playerData[id].lastAnswerCorrect = false;
                 }
@@ -666,7 +718,7 @@
                 }
             });
 
-            // 新增下一題按鈕邏輯
+            // 保持下一題捷徑按鈕功能
             const isFinalRound = (currentIdx === quizData.length - 1);
             let nextBtnHtml = isFinalRound 
                 ? `<button class="btn-main" style="margin-top:0; padding:10px 30px; font-size:18px; background:var(--red);" onclick="showLeaderboard()">結束與排名 🏆</button>`
@@ -789,6 +841,13 @@
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
             if(!pin || !myNickname) { alert('請填入房間 ID 與暱稱！'); return; }
+            
+            // 已恢復：連線中防重複點擊狀態
+            const loginBtn = document.querySelector("#screen-pad-login .btn-main");
+            const originalText = loginBtn.innerText;
+            loginBtn.innerText = "⏳ 正在連線中...";
+            loginBtn.disabled = true;
+
             role = 'player';
             peer = new Peer();
             peer.on('open', (id) => {
@@ -799,11 +858,30 @@
                     console.log('與主台連線中斷...');
                 });
             });
-            peer.on('error', (err) => alert('找不到該房間，請確認房間 ID 是否正確。'));
+            peer.on('error', (err) => {
+                alert('找不到該房間，請確認房間 ID 是否正確。');
+                loginBtn.innerText = originalText;
+                loginBtn.disabled = false;
+            });
         }
 
         function handlePlayerReceivedData(data) {
+            // 已恢復：拒絕加入錯誤通知
+            if (data.type === 'JOIN_FAIL') {
+                alert(data.reason);
+                const loginBtn = document.querySelector("#screen-pad-login .btn-main");
+                if (loginBtn) { loginBtn.innerText = "進入遊戲"; loginBtn.disabled = false; }
+                if (peer) { peer.destroy(); }
+                return;
+            }
             if (data.type === 'JOIN_ACK') {
+                const loginBtn = document.querySelector("#screen-pad-login .btn-main");
+                if (loginBtn) { loginBtn.innerText = "進入遊戲"; loginBtn.disabled = false; }
+                
+                // 新增：顯示專屬玩家暱稱固定標籤
+                document.getElementById('display-player-name').innerText = myNickname;
+                document.getElementById('player-nickname-badge').style.display = 'block';
+
                 switchScreen('screen-pad-wait');
                 document.getElementById('pad-wait-msg').innerText = "成功加入！等待房長發布題目...";
             }
@@ -813,7 +891,14 @@
                 document.getElementById('pad-header-index').innerText = `題目 ${data.qIdx} / ${data.qTotal}`;
                 document.getElementById('pad-header-title').innerText = data.qTitle;
 
-                document.querySelectorAll('.pad-btn').forEach(b => b.disabled = false);
+                // 已恢復：接收大螢幕傳來的選項文字並顯示在按鈕中
+                document.querySelectorAll('.pad-btn').forEach((b, index) => {
+                    b.disabled = false;
+                    const textSpan = b.querySelector('.pad-opt-text');
+                    if (textSpan && data.qOpts && data.qOpts[index]) {
+                        textSpan.innerText = data.qOpts[index];
+                    }
+                });
             }
             if (data.type === 'ANSWER_ACK') {
                 switchScreen('screen-pad-wait');
@@ -823,6 +908,8 @@
                 switchScreen('screen-pad-result');
                 const resBg = data.isCorrect ? 'var(--green)' : 'var(--red)';
                 document.getElementById('screen-pad-result').style.backgroundColor = resBg;
+                
+                // 完全移除連續答對加分的相關文字，保持畫面乾淨
                 document.getElementById('pad-result-title').innerText = data.isCorrect ? '答對了！🎉' : '答錯了！❌';
                 document.getElementById('pad-result-score').innerText = `本題得分: +${data.scoreGained} \n總積分: ${data.totalScore}`;
             }
@@ -834,7 +921,7 @@
             }
             if (data.type === 'KICKED') {
                 alert('您已被房長移出房間。');
-                location.reload(); // 被踢除後自動刷新回首頁
+                location.reload(); 
             }
         }
 
