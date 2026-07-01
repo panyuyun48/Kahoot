@@ -15,7 +15,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f2f2f2; color: var(--dark); overflow-x: hidden; transition: padding-right 0.3s; }
         
-        /* 當 Host 面板開啟時，為 body 增加右側留白，避免內容被固定面板遮擋 */
         body.host-mode { padding-right: 280px; }
         
         .screen { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; position: relative; min-height: 100vh; }
@@ -25,7 +24,6 @@
         .btn-main:hover { transform: scale(1.03); background-color: #361071; }
         .btn-main:disabled { background-color: #aaa; cursor: not-allowed; transform: none; }
         
-        /* 玩家加入專屬特效按鈕 */
         .btn-player-join {
             background: #0085ff; margin-top: 30px; font-size: 34px; font-weight: 900; padding: 25px 60px;
             border-radius: 60px; width: 90%; max-width: 600px; border: 4px solid rgba(255,255,255,0.4);
@@ -38,14 +36,12 @@
             100% { box-shadow: 0 0 0 0 rgba(0, 133, 255, 0); }
         }
 
-        /* 第一名專屬黃金呼吸燈 */
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(251, 192, 45, 0.7); }
             70% { box-shadow: 0 0 0 20px rgba(251, 192, 45, 0); }
             100% { box-shadow: 0 0 0 0 rgba(251, 192, 45, 0); }
         }
 
-        /* 題組與編輯器樣式 */
         .quiz-set-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 700px; text-align: left; margin-bottom: 25px; max-height: 65vh; overflow-y: auto; color: var(--dark); position: relative; }
         .q-editor-block { border-left: 4px solid var(--purple); padding-left: 15px; margin: 20px 0; background: #fafafa; padding: 15px; border-radius: 0 8px 8px 0; transition: transform 0.2s; }
         .q-editor-block h4 { color: var(--purple); margin-bottom: 10px; }
@@ -69,7 +65,6 @@
         .btn-kick { background: rgba(226, 27, 60, 0.1); color: var(--red); border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; font-weight: bold; }
         .btn-kick:hover { background: var(--red); color: white; }
 
-        /* 右上角固定面板 (區隔畫面) */
         .persistent-lobby-info {
             position: fixed; top: 0; right: 0; bottom: 0; width: 280px;
             background: rgba(255, 255, 255, 0.98); padding: 20px;
@@ -84,24 +79,20 @@
         .p-list-item { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: bold; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
         .p-list-item.offline { opacity: 0.55; color: #777; }
 
-        /* ==================== 大螢幕主台：題目區塊 (支援長內容捲動) ==================== */
         #screen-host-quiz { padding: 20px 40px; justify-content: flex-start; overflow-y: auto; }
         .quiz-progress-text { font-size: 22px; font-weight: bold; color: var(--purple); background: rgba(70, 23, 143, 0.1); padding: 6px 20px; border-radius: 20px; margin-bottom: 5px; flex-shrink: 0; }
         .timer-circle { width: 85px; height: 85px; border-radius: 50%; background: var(--purple); color: white; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 10px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex-shrink: 0; }
         .question-text { font-size: 38px; font-weight: bold; margin-bottom: 15px; padding: 0 20px; text-align: center; width: 100%; max-width: 1400px; flex-shrink: 0; word-break: break-word; } 
         
-        /* 中段複合區：允許內容正常往下延伸並捲動 */
         .quiz-middle-zone { display: flex; flex-direction: column; width: 100%; max-width: 1400px; flex-grow: 1; gap: 20px; justify-content: flex-start; align-items: center; padding-bottom: 20px; }
         .chart-container { width: 100%; max-width: 800px; height: 300px; min-height: 300px; margin: 0 auto; flex-shrink: 0; }
         
-        /* 主台選項：使用 auto-rows 讓高度隨內容延展 */
         .options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; width: 100%; flex-grow: 1; }
         .option-card { font-size: 32px; font-weight: bold; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: flex-start; gap: 20px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); transition: 0.2s; text-align: left; width: 100%; min-height: 120px; padding: 20px 30px; word-break: break-word; }
         .option-card.fade-out { opacity: 0.25; transform: scale(0.95); }
         .option-card.correct-highlight { border: 8px solid #fff; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 10; }
         .opt-text-val { flex: 1; min-width: 0; white-space: normal; text-align: left; }
         
-        /* 解答畫面大螢幕：維持上下配置，圖表在上，選項在下 */
         #screen-host-quiz.reveal-results .quiz-middle-zone { flex-direction: column; }
         #screen-host-quiz.reveal-results .options-grid { gap: 15px; }
         #screen-host-quiz.reveal-results .option-card { font-size: 26px; min-height: 80px; padding: 15px 25px; }
@@ -119,11 +110,9 @@
         .leaderboard-item { display: flex; justify-content: space-between; background: white; padding: 15px 25px; margin-bottom: 10px; border-radius: 8px; font-size: 22px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: transform 0.2s; }
         .leaderboard-item.offline-player { opacity: 0.45; background: #e8e8e8; color: #777; box-shadow: none; border: 1px dashed #ccc; }
 
-        /* 手機玩家端樣式 */
         .pad-screen { padding: 10px; background: #f5f5f5; flex-direction: column; height: 100dvh; justify-content: flex-start; }
         .pad-quiz-header { width: 100%; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; text-align: center; border-bottom: 4px solid var(--purple); margin-top: 35px; flex-shrink: 0; } 
         
-        /* 手機選項 */
         .pad-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; width: 100%; flex-grow: 1; margin-bottom: 10px; }
         .pad-btn { border: none; border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: white; width: 100%; height: 100%; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transition: opacity 0.1s; }
         .pad-btn:active { opacity: 0.7; }
@@ -133,7 +122,6 @@
         .input-group { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
         .input-group input { width: 100%; padding: 12px; font-size: 18px; margin: 15px 0; border: 2px solid #ccc; border-radius: 6px; text-align: center; }
         
-        /* 玩家個人暱稱固定顯示標籤 */
         #player-nickname-badge {
             display: none; position: fixed; top: 10px; left: 10px; 
             background: rgba(0,0,0,0.6); color: white; 
@@ -147,7 +135,7 @@
             .options-grid, #screen-host-quiz.reveal-results .options-grid { grid-template-columns: 1fr; } 
             .option-card { font-size: 24px; padding: 15px; min-height: auto; } 
             .pad-grid { gap: 10px; }
-            .persistent-lobby-info { display: none !important; } /* 手機端大螢幕隱藏右側避免破版 */
+            .persistent-lobby-info { display: none !important; } 
             body.host-mode { padding-right: 0; }
             .btn-player-join { font-size: 26px; padding: 20px 40px; }
         }
@@ -168,8 +156,7 @@
         <h1 style="font-size: 48px; margin-bottom: 10px;">Kahoot!! FAKE</h1>
         <p style="margin: 10px 0 20px 0; opacity: 0.8; font-size: 18px;">您可以新增題組、或是直接匯入現有的題組 TXT 檔案！</p>
         
-        <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-            </div>
+        <div id="quiz-workspace" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
 
         <input type="file" id="file-import-input" accept=".txt" style="display: none;" onchange="handleFileImport(event)">
 
@@ -177,10 +164,8 @@
             <button id="btn-add-set" class="btn-main" style="background:#00c853;" onclick="createNewQuizSetUI()">＋ 新增題組</button>
             <button id="btn-import-set" class="btn-main" style="background:#00e5ff; color:#1a1a1a;" onclick="document.getElementById('file-import-input').click()">📂 匯入題組文字檔 (.txt)</button>
             <button id="btn-download-template" class="btn-main" style="background:#8e44ad;" onclick="downloadTemplate()">📄 下載題組模板</button>
-            
             <button id="btn-editor-back" class="btn-main" style="background:#666; display:none;" onclick="location.reload()">✕ 關閉返回</button>
             <button id="btn-export-set" class="btn-main" style="background:#ff9100; display:none;" onclick="exportQuizSetToFile()">💾 匯出並下載題組 (.txt)</button>
-            
             <button id="btn-host-start" class="btn-main" style="display:none; background:#0085ff;" onclick="initHost()">👑 主持人 (Host) 開始遊戲</button>
         </div>
         <hr style="width:100%; max-width:700px; opacity:0.2; margin:10px 0;" id="welcome-divider">
@@ -271,16 +256,22 @@
     </div>
 
     <script>
-        // 加入免費且穩定的 Google STUN 伺服器，優化手機網路 (4G/5G) NAT 穿透率
+        // 🚀 核心優化：加入免費且穩定的公共 TURN/STUN 伺服器，解決 4G/5G 行動網路 NAT 穿透失敗問題
         const webrtcConfig = {
+            pingInterval: 5000, // 每5秒維持連線不中斷
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
+                    { urls: 'stun:global.stun.twilio.com:3478' },
+                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
                 ]
             }
         };
+
+        // 避免與全球其他開源使用者撞房，使用更長的唯一前綴
+        const ROOM_PREFIX = 'kht-fake-rm-';
 
         let globalTimeLimit = 20; 
         let quizData = [];
@@ -599,14 +590,11 @@
             document.getElementById('room-pin-text').innerText = roomPin;
             document.getElementById('persist-pin-text').innerText = roomPin;
 
-            // 實例化 Host 時也帶入 STUN 設定
-            peer = new Peer('kahoot-room-' + roomPin, webrtcConfig);
+            peer = new Peer(ROOM_PREFIX + roomPin, webrtcConfig);
             peer.on('open', (id) => {
                 const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomPin}`;
-                
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById('qrcode'), { text: joinUrl, width: 160, height: 160 });
-                
                 document.getElementById('persist-qrcode').innerHTML = "";
                 new QRCode(document.getElementById('persist-qrcode'), { text: joinUrl, width: 85, height: 85 });
             });
@@ -864,7 +852,7 @@
                 let card = document.getElementById(`opt-card-${index}`);
                 if (index === qItem.ans) {
                     card.classList.add('correct-highlight');
-                    card.innerHTML += ` <span style="margin-left:auto; font-size:36px;">✓</span>`;
+                    card.innerHTML += ` <span style="margin-left:auto; font-size:36px; flex-shrink:0;">✓</span>`;
                 } else {
                     card.classList.add('fade-out');
                 }
@@ -1067,8 +1055,10 @@
         function broadcast(msg) { connMap.forEach(conn => conn.send(msg)); }
 
         /* =====================================================================
-           玩家手機端邏輯 (Player) - 加入自動重連機制
+           玩家手機端邏輯 (Player) - 含嚴格超時自動重連機制
            ===================================================================== */
+        let connTimeout;
+        
         function connectToHost(isRetry = false) {
             let pin = document.getElementById('pad-pin-input').value.trim();
             myNickname = document.getElementById('pad-name-input').value.trim();
@@ -1082,17 +1072,32 @@
 
             role = 'player';
             if (peer) {
-                peer.destroy(); // 確保清除舊的 Peer 狀態
+                peer.destroy();
             }
 
-            peer = new Peer(webrtcConfig); // 套用帶有 STUN 的設定
+            peer = new Peer(webrtcConfig);
             
             peer.on('open', (id) => {
-                // 開啟可靠傳輸模式 (reliable) 防止封包掉落
-                myConn = peer.connect('kahoot-room-' + pin, { reliable: true });
+                // 開啟 reliable 防止封包丟失
+                myConn = peer.connect(ROOM_PREFIX + pin, { reliable: true });
                 
+                // 強制 8 秒逾時偵測：若沒有收到 open 事件，代表被防火牆卡住了，手動觸發重連
+                clearTimeout(connTimeout);
+                connTimeout = setTimeout(() => {
+                    console.log("連線卡住，嘗試重新連線...");
+                    if (playerRetryCount < MAX_RETRIES) {
+                        playerRetryCount++;
+                        connectToHost(true);
+                    } else {
+                        alert('連線逾時！請確認房間 ID 或嘗試切換網路連線。');
+                        loginBtn.innerText = "進入遊戲";
+                        loginBtn.disabled = false;
+                    }
+                }, 8000);
+
                 myConn.on('open', () => {
-                    playerRetryCount = 0; // 連線成功，重置重試計數
+                    clearTimeout(connTimeout); // 成功連線！取消逾時偵測
+                    playerRetryCount = 0;
                     myConn.send({ type: 'JOIN', name: myNickname });
                 });
                 
@@ -1105,12 +1110,12 @@
 
             peer.on('error', (err) => {
                 console.error('Peer連線錯誤:', err);
+                clearTimeout(connTimeout);
                 if (playerRetryCount < MAX_RETRIES) {
                     playerRetryCount++;
-                    // 延遲 1.5 秒後嘗試重新連線
                     setTimeout(() => connectToHost(true), 1500); 
                 } else {
-                    alert('連線失敗！\n1. 請確認房間 ID 是否正確。\n2. 請檢查網路，或嘗試開關飛航模式後再試。');
+                    alert('連線失敗！\\n1. 請確認房間 ID 是否正確。\\n2. 請檢查網路，或嘗試開關飛航模式後再試。');
                     loginBtn.innerText = "進入遊戲";
                     loginBtn.disabled = false;
                 }
