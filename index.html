@@ -986,7 +986,9 @@
             if(isFinalRound) {
                 document.getElementById('rank-title').innerText = "🏆 最終大排行 🏆";
                 
+                // --- 新增：回到首頁選項 ---
                 rankActionsDom.innerHTML = `
+                    <button class="btn-main" style="background:#0085ff; padding: 15px 35px; font-size: 22px;" onclick="location.reload()">🏠 回到首頁</button>
                     <button class="btn-main" style="background:#00c853; padding: 15px 35px; font-size: 22px;" onclick="playAgain()">🔄 再玩一次</button>
                     <button class="btn-main" style="background:#ff9100; padding: 15px 35px; font-size: 22px;" onclick="exportQuizSetToFile()">💾 下載題組 (.txt)</button>
                 `;
